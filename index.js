@@ -9,10 +9,11 @@ const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => res.end('BOT ONLINE\n'));
 server.listen(PORT, '0.0.0.0');
 
-const TOKEN = '8629827264:AAH1OBjYsuzi4OwcMp-KGUmssV9OWXdDGE0';
+const TOKEN = '8629827264:AAFXb35F_Rwu-xydvGeSDw5rG4QsglkXtC4';
 const ADMINS = [65002404, 786314811, 5310405293, 121730039, 5310405293]; 
 const GROUP_ID = '-1002262665652';
 
+console.log("🛠 Bot obyektini yaratish...");
 const bot = new Telegraf(TOKEN);
 
 // Admin check
@@ -58,22 +59,31 @@ const DISTRICT_ADMINS = {
 let db = { tasks: [], topics: INITIAL_TOPICS }; 
 let users_db = {};
 
-// PROTECTED DATABASE LOADING
 if (fs.existsSync(DB_PATH)) { 
     try {
+        console.log("📂 Bazani yuklash: supervisor_db.json...");
         const loaded = JSON.parse(fs.readFileSync(DB_PATH));
         db.tasks = loaded.tasks || [];
-        // Agar topics bo'lmasa yoki bo'sh bo'lsa, INITIAL_TOPICS-dan foydalanamiz
         if (!loaded.topics || loaded.topics.length === 0) {
             db.topics = INITIAL_TOPICS;
         } else {
             db.topics = loaded.topics;
         }
     } catch (e) {
+        console.error("❌ supervisor_db.json o'qishda xato:", e.message);
         db = { tasks: [], topics: INITIAL_TOPICS };
     }
 }
-if (fs.existsSync(USERS_DB_PATH)) { users_db = JSON.parse(fs.readFileSync(USERS_DB_PATH)); }
+
+if (fs.existsSync(USERS_DB_PATH)) { 
+    try {
+        console.log("📂 Bazani yuklash: users_db.json...");
+        users_db = JSON.parse(fs.readFileSync(USERS_DB_PATH)); 
+    } catch (e) {
+        console.error("❌ users_db.json o'qishda xato:", e.message);
+        users_db = {};
+    }
+}
 
 function saveDb() { fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2)); }
 
@@ -215,10 +225,14 @@ cron.schedule('*/15 * * * *', () => {
     });
 }, { timezone: "Asia/Tashkent" });
 
+console.log("🔄 Botni Telegram bilan ulash (bot.launch)...");
 bot.launch({ dropPendingUpdates: true })
-    .then(() => console.log("🚀 PRODUCTION BOT ONLINE AND POLLING"))
+    .then(() => {
+        console.log("✅ PRODUCTION BOT ONLINE VA POLLING BOSHLANDI!");
+        console.log("Bot username:", bot.botInfo?.username);
+    })
     .catch((err) => {
-        console.error("❌ Bot launch error:", err);
+        console.error("❌ Bot launch error (Telegram bilan aloqa yo'q):", err);
         process.exit(1); 
     });
 
