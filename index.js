@@ -112,27 +112,60 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         return ctx.wizard.next();
     },
     async (ctx) => {
-        const hours = parseInt(ctx.message.text);
-        if (isNaN(hours)) return ctx.reply("Raqam kiriting.");
-        const deadline = moment().tz("Asia/Tashkent").add(hours, 'hours');
+        const input = ctx.message.text.trim();
+        let deadline;
+
+        // 1. Try to parse as DD.MM.YYYY HH:mm
+        const dateParsed = moment(input, "DD.MM.YYYY HH:mm", true);
+        if (dateParsed.isValid()) {
+            deadline = dateParsed.tz("Asia/Tashkent");
+        } else {
+            // 2. Try to parse as hours (number)
+            const hours = parseInt(input);
+            if (!isNaN(hours)) {
+                deadline = moment().tz("Asia/Tashkent").add(hours, 'hours');
+            } else {
+                return ctx.reply("Iltimos, muddatni to'g'ri formatda kiriting:\nMisol: 24 (soat) yoki 11.04.2026 15:00");
+            }
+        }
+        
         const task = {
             id: Date.now(),
             topic_id: ctx.wizard.state.topicId,
             text: ctx.wizard.state.taskText,
             deadline: deadline.format("YYYY-MM-DD HH:mm:ss"),
-            completed_regions: [], seen_regions: [], expiry_reported: false
+            completed_regions: [],
+            seen_regions: [],
+            expiry_reported: false
         };
-        db.tasks.push(task); saveDb();
+        db.tasks.push(task); 
+        saveDb();
+
         try {
-            await bot.telegram.sendMessage(task.topic_id, `📢 <b>ЯНГИ ТОПШIРИҚ:</b>\n<i>${task.text}</i>\n⏱ Muddat: ${hours} soat`, {
-                parse_mode: 'HTML', message_thread_id: task.topic_id,
-                ...Markup.inlineKeyboard([[Markup.button.callback("📥 Tanishdim", `seen_${task.id}`)]])
+            await bot.telegram.sendMessage(task.topic_id, 
+                `📢 <b>ЯНГИ ТОПШИРИҚ ҚАЙД ЭТИЛДИ:</b>\n` +
+                `📝 <i>${task.text}</i>\n` +
+                `⏱ Муддат: <b>${hours} соат</b>\n` +
+                `📅 Тугаш вақti: <b>${deadline.format("DD.MM.YYYY HH:mm")}</b>\n\n` +
+                `#topshiriq_nazorati`, { 
+                    parse_mode: 'HTML', 
+                    message_thread_id: task.topic_id,
+                    ...Markup.inlineKeyboard([[Markup.button.callback("📥 Tanishdim", `seen_${task.id}`)]])
+                });
+
+            const mMsg = await bot.telegram.sendMessage(task.topic_id, generateMonitoringText(task), { 
+                parse_mode: 'HTML', 
+                message_thread_id: task.topic_id 
             });
-            const mMsg = await bot.telegram.sendMessage(task.topic_id, generateMonitoringText(task), { parse_mode: 'HTML', message_thread_id: task.topic_id });
+            
             task.monitoring_msg_id = mMsg.message_id;
             saveDb();
-            ctx.reply("✅ Yuborildi.");
-        } catch (e) { ctx.reply("❌ Xato."); }
+
+            ctx.replyWithHTML(`✅ Топшириқ <b>"${ctx.wizard.state.topicName}"</b> бўлимига юборилди ва назоратга олинди.`);
+        } catch (e) {
+            console.error("TASK SUBMISSION ERROR:", e);
+            ctx.reply(`❌ Xato: ${e.message}\n\nEhtimol bot ushbu bo'limda (guruhda) ADMIN emasdir. Iltimos tekshiring.`);
+        }
         return ctx.scene.leave();
     }
 );
