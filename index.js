@@ -143,31 +143,36 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         };
         db.tasks.push(task); saveDb();
 
-        const taskMsg = await bot.telegram.sendMessage(ctx.wizard.state.topicId, 
-            `📢 <b>ЯНГИ ТОПШИРИҚ ҚАЙД ЭТИЛДИ:</b>\n` +
-            `📝 <i>${task.text}</i>\n` +
-            `⏱ Муддат: <b>${hours} соат</b>\n` +
-            `📅 Тугаш вақти: <b>${deadline.format("DD.MM.YYYY HH:mm")}</b>\n\n` +
-            `#topshiriq_nazorati`, { 
-                parse_mode: 'HTML', 
-                message_thread_id: ctx.wizard.state.topicId,
-                ...Markup.inlineKeyboard([
-                    [Markup.button.callback("📥 Tanishdim", `seen_${task.id}`)],
-                    [Markup.button.callback("📊 Ijro holati", `status_${task.id}`)]
-                ])
-            });
+        try {
+            const taskMsg = await bot.telegram.sendMessage(ctx.wizard.state.topicId, 
+                `📢 <b>ЯНГИ ТОПШИРИҚ ҚАЙД ЭТИЛДИ:</b>\n` +
+                `📝 <i>${task.text}</i>\n` +
+                `⏱ Муддат: <b>${hours} соат</b>\n` +
+                `📅 Тугаш вақти: <b>${deadline.format("DD.MM.YYYY HH:mm")}</b>\n\n` +
+                `#topshiriq_nazorati`, { 
+                    parse_mode: 'HTML', 
+                    message_thread_id: ctx.wizard.state.topicId,
+                    ...Markup.inlineKeyboard([
+                        [Markup.button.callback("📥 Tanishdim", `seen_${task.id}`)],
+                        [Markup.button.callback("📊 Ijro holati", `status_${task.id}`)]
+                    ])
+                });
 
-        // Create Live Monitoring Message
-        const monitoringMsg = await bot.telegram.sendMessage(ctx.wizard.state.topicId, 
-            generateMonitoringText(task), { 
-                parse_mode: 'HTML', 
-                message_thread_id: ctx.wizard.state.topicId 
-            });
-        
-        task.monitoring_msg_id = monitoringMsg.message_id;
-        saveDb();
+            // Create Live Monitoring Message
+            const monitoringMsg = await bot.telegram.sendMessage(ctx.wizard.state.topicId, 
+                generateMonitoringText(task), { 
+                    parse_mode: 'HTML', 
+                    message_thread_id: ctx.wizard.state.topicId 
+                });
+            
+            task.monitoring_msg_id = monitoringMsg.message_id;
+            saveDb();
 
-        ctx.replyWithHTML(`✅ Топшириқ <b>"${ctx.wizard.state.topicName}"</b> бўлимига юборилди va назоратга олинди.`);
+            ctx.replyWithHTML(`✅ Топшириқ <b>"${ctx.wizard.state.topicName}"</b> бўлимига юборилди va назоратga олинди.`);
+        } catch (e) {
+            console.error("Send Task Error:", e);
+            ctx.reply("❌ Topshiriq yuborishda xatolik yuz berdi. Bot admin huquqiga ega ekanini tekshiring.");
+        }
         return ctx.scene.leave();
     }
 );
