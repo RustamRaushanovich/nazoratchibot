@@ -4,11 +4,11 @@ const moment = require('moment-timezone');
 const cron = require('node-cron');
 const http = require('http');
 
-// RENDER HEALTH CHECK
+// V10.1 - STABLE VERSION WITH DATE FIX
 const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'text/plain' });
-    res.end('GROUP SUPERVISOR BOT IS ONLINE\n');
+    res.end('GROUP SUPERVISOR BOT V10.1 IS ONLINE\n');
 });
 server.listen(PORT, '0.0.0.0');
 
@@ -61,7 +61,6 @@ function getDistrict(uid, name = "") {
     return found || null;
 }
 
-// MONITORING TEXT
 function generateMonitoringText(task) {
     let text = `📊 <b>IJRO MONITORINGI (LIVE):</b>\n` +
                `📝 <i>${task.text.substring(0, 40)}...</i>\n\n` +
@@ -85,7 +84,6 @@ async function updateLiveMonitoring(taskId) {
     } catch (e) {}
 }
 
-// SCENE
 const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
     (ctx) => {
         ctx.replyWithHTML("📝 <b>Янги топшириқ матнини ёзинг:</b>");
@@ -108,24 +106,21 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         const topic = db.topics.find(t => t.id == ctx.wizard.state.topicId);
         if (!topic) return ctx.scene.leave();
         ctx.wizard.state.topicName = topic.name;
-        ctx.replyWithHTML("⏱ <b>Муддатни ёзинг (соатда):</b>");
+        ctx.replyWithHTML("⏱ <b>Muddatni kiritng:</b>\n<i>Misol: 24 (soat) yoki 11.04.2026 15:00</i>");
         return ctx.wizard.next();
     },
     async (ctx) => {
         const input = ctx.message.text.trim();
         let deadline;
-
-        // 1. Try to parse as DD.MM.YYYY HH:mm
         const dateParsed = moment(input, "DD.MM.YYYY HH:mm", true);
         if (dateParsed.isValid()) {
             deadline = dateParsed.tz("Asia/Tashkent");
         } else {
-            // 2. Try to parse as hours (number)
             const hours = parseInt(input);
             if (!isNaN(hours)) {
                 deadline = moment().tz("Asia/Tashkent").add(hours, 'hours');
             } else {
-                return ctx.reply("Iltimos, muddatni to'g'ri formatda kiriting:\nMisol: 24 (soat) yoki 11.04.2026 15:00");
+                return ctx.reply("Format xato. Misol: 24 yoki 11.04.2026 15:00");
             }
         }
         
@@ -134,19 +129,15 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
             topic_id: ctx.wizard.state.topicId,
             text: ctx.wizard.state.taskText,
             deadline: deadline.format("YYYY-MM-DD HH:mm:ss"),
-            completed_regions: [],
-            seen_regions: [],
-            expiry_reported: false
+            completed_regions: [], seen_regions: [], expiry_reported: false
         };
-        db.tasks.push(task); 
-        saveDb();
+        db.tasks.push(task); saveDb();
 
         try {
             await bot.telegram.sendMessage(task.topic_id, 
                 `📢 <b>ЯНГИ ТОПШИРИҚ ҚАЙД ЭТИЛДИ:</b>\n` +
                 `📝 <i>${task.text}</i>\n` +
-                `⏱ Муддат: <b>${hours} соат</b>\n` +
-                `📅 Тугаш вақti: <b>${deadline.format("DD.MM.YYYY HH:mm")}</b>\n\n` +
+                `📅 Тугаш вақти: <b>${deadline.format("DD.MM.YYYY HH:mm")}</b>\n\n` +
                 `#topshiriq_nazorati`, { 
                     parse_mode: 'HTML', 
                     message_thread_id: task.topic_id,
@@ -160,11 +151,9 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
             
             task.monitoring_msg_id = mMsg.message_id;
             saveDb();
-
-            ctx.replyWithHTML(`✅ Топшириқ <b>"${ctx.wizard.state.topicName}"</b> бўлимига юборилди ва назоратга олинди.`);
+            ctx.replyWithHTML(`✅ Топшириқ <b>"${ctx.wizard.state.topicName}"</b> бўлимига юборилди.`);
         } catch (e) {
-            console.error("TASK SUBMISSION ERROR:", e);
-            ctx.reply(`❌ Xato: ${e.message}\n\nEhtimol bot ushbu bo'limda (guruhda) ADMIN emasdir. Iltimos tekshiring.`);
+            ctx.reply(`❌ Xato: ${e.message}\n\nBot admin ekanini ko'ring.`);
         }
         return ctx.scene.leave();
     }
