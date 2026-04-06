@@ -13,6 +13,7 @@ const server = http.createServer((req, res) => {
 server.listen(PORT, '0.0.0.0');
 
 const TOKEN = process.env.BOT_TOKEN || '8629827264:AAHnQ8LwpLO74NbLErGsd5ujk4xiRRRYEHw';
+const GROUP_ID = -1002262665652; // ASOSIY GURUH ID-SI
 const bot = new Telegraf(TOKEN);
 
 const DB_PATH = './supervisor_db.json';
@@ -80,8 +81,12 @@ async function updateLiveMonitoring(taskId) {
     const task = db.tasks.find(t => t.id == taskId);
     if (!task || !task.monitoring_msg_id) return;
     try {
-        await bot.telegram.editMessageText(task.topic_id, task.monitoring_msg_id, null, generateMonitoringText(task), { parse_mode: 'HTML' });
-    } catch (e) {}
+        await bot.telegram.editMessageText(GROUP_ID, task.monitoring_msg_id, null, generateMonitoringText(task), { 
+            parse_mode: 'HTML' 
+        });
+    } catch (e) {
+        console.error("Edit Live Error:", e.message);
+    }
 }
 
 const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
@@ -134,19 +139,19 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         db.tasks.push(task); saveDb();
 
         try {
-            await bot.telegram.sendMessage(task.topic_id, 
+            await bot.telegram.sendMessage(GROUP_ID, 
                 `📢 <b>ЯНГИ ТОПШИРИҚ ҚАЙД ЭТИЛДИ:</b>\n` +
                 `📝 <i>${task.text}</i>\n` +
                 `📅 Тугаш вақти: <b>${deadline.format("DD.MM.YYYY HH:mm")}</b>\n\n` +
                 `#topshiriq_nazorati`, { 
                     parse_mode: 'HTML', 
-                    message_thread_id: task.topic_id,
+                    message_thread_id: parseInt(task.topic_id),
                     ...Markup.inlineKeyboard([[Markup.button.callback("📥 Tanishdim", `seen_${task.id}`)]])
                 });
 
-            const mMsg = await bot.telegram.sendMessage(task.topic_id, generateMonitoringText(task), { 
+            const mMsg = await bot.telegram.sendMessage(GROUP_ID, generateMonitoringText(task), { 
                 parse_mode: 'HTML', 
-                message_thread_id: task.topic_id 
+                message_thread_id: parseInt(task.topic_id)
             });
             
             task.monitoring_msg_id = mMsg.message_id;
@@ -181,7 +186,9 @@ bot.on('callback_query', async (ctx) => {
             task.seen_regions.push(region);
             saveDb();
             updateLiveMonitoring(task.id);
-            bot.telegram.sendMessage(task.topic_id, `🔔 ${region} tanishdi.`, { message_thread_id: task.topic_id });
+            bot.telegram.sendMessage(GROUP_ID, `🔔 ${region} tanishdi.`, { 
+                message_thread_id: parseInt(task.topic_id) 
+            });
             ctx.answerCbQuery("Qabul qilindi.");
         }
     }
