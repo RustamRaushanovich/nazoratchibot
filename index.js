@@ -9,14 +9,17 @@ const PORT = process.env.PORT || 10000;
 const server = http.createServer((req, res) => res.end('BOT ONLINE\n'));
 server.listen(PORT, '0.0.0.0');
 
-const TOKEN = '8629827264:AAFXb35F_Rwu-xydvGeSDw5rG4QsglkXtC4';
-const ADMINS = [65002404, 786314811, 5310405293, 121730039, 5310405293]; 
+// XAVFSIZ TOKEN (Render Environment Variables-dan o'qiydi)
+const TOKEN = process.env.BOT_TOKEN;
+
+if (!TOKEN) {
+    console.error("🚨 ERROR: BOT_TOKEN topilmadi! Render-da Environment Variable qo'shing.");
+}
+
+const ADMINS = [65002404, 786314811, 5310405293, 121730039]; 
 const GROUP_ID = '-1002262665652';
 
-console.log("🛠 Bot obyektini yaratish...");
 const bot = new Telegraf(TOKEN);
-
-// Admin check
 const isAdmin = (uid) => ADMINS.includes(Number(uid));
 
 const DB_PATH = './supervisor_db.json';
@@ -61,29 +64,12 @@ let users_db = {};
 
 if (fs.existsSync(DB_PATH)) { 
     try {
-        console.log("📂 Bazani yuklash: supervisor_db.json...");
         const loaded = JSON.parse(fs.readFileSync(DB_PATH));
         db.tasks = loaded.tasks || [];
-        if (!loaded.topics || loaded.topics.length === 0) {
-            db.topics = INITIAL_TOPICS;
-        } else {
-            db.topics = loaded.topics;
-        }
-    } catch (e) {
-        console.error("❌ supervisor_db.json o'qishda xato:", e.message);
-        db = { tasks: [], topics: INITIAL_TOPICS };
-    }
+        db.topics = (loaded.topics && loaded.topics.length > 0) ? loaded.topics : INITIAL_TOPICS;
+    } catch (e) { db = { tasks: [], topics: INITIAL_TOPICS }; }
 }
-
-if (fs.existsSync(USERS_DB_PATH)) { 
-    try {
-        console.log("📂 Bazani yuklash: users_db.json...");
-        users_db = JSON.parse(fs.readFileSync(USERS_DB_PATH)); 
-    } catch (e) {
-        console.error("❌ users_db.json o'qishda xato:", e.message);
-        users_db = {};
-    }
-}
+if (fs.existsSync(USERS_DB_PATH)) { users_db = JSON.parse(fs.readFileSync(USERS_DB_PATH)); }
 
 function saveDb() { fs.writeFileSync(DB_PATH, JSON.stringify(db, null, 2)); }
 
@@ -94,22 +80,19 @@ function getDistrict(uid, name = "") {
     return found || null;
 }
 
-// --- TASK WIZARD ---
 const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
     (ctx) => {
-        const topicButtons = db.topics.map(t => [Markup.button.callback(t.name, `sel_topic_${t.id}`)]);
-        ctx.replyWithHTML("📂 <b>Topshiriq qaysi bo'limga yuborilsin?</b>", Markup.inlineKeyboard(topicButtons));
+        const btns = db.topics.map(t => [Markup.button.callback(t.name, `sel_topic_${t.id}`)]);
+        ctx.replyWithHTML("📂 <b>Bo'limni tanlang:</b>", Markup.inlineKeyboard(btns));
         return ctx.wizard.next();
     },
     (ctx) => {
-        if (!ctx.callbackQuery) return ctx.reply("Iltimos, bo'limni tanlang.");
+        if (!ctx.callbackQuery) return;
         ctx.wizard.state.topicId = ctx.callbackQuery.data.replace('sel_topic_', '');
         ctx.wizard.state.topicName = db.topics.find(t => t.id == ctx.wizard.state.topicId).name;
-        ctx.replyWithHTML(`📍 <b>${ctx.wizard.state.topicName}</b> bo'limi tanlandi.\n\n⚙️ <b>Ijro turini tanlang:</b>`, Markup.inlineKeyboard([
-            [Markup.button.callback("✅ Standart", "req_std")],
-            [Markup.button.callback("📊 Excel + PDF", "req_xls_pdf")],
-            [Markup.button.callback("📂 Word + PDF", "req_doc_pdf")],
-            [Markup.button.callback("📦 Elektron + Imzoli", "req_any_pdf")]
+        ctx.replyWithHTML(`📍 <b>${ctx.wizard.state.topicName}</b>\n\n⚙️ <b>Ijro turi:</b>`, Markup.inlineKeyboard([
+            [Markup.button.callback("✅ Standart", "req_std")], [Markup.button.callback("📊 Excel + PDF", "req_xls_pdf")],
+            [Markup.button.callback("📂 Word + PDF", "req_doc_pdf")], [Markup.button.callback("📦 Elektron + Imzoli", "req_any_pdf")]
         ]));
         return ctx.wizard.next();
     },
@@ -117,47 +100,44 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         if (!ctx.callbackQuery) return;
         ctx.wizard.state.reqType = ctx.callbackQuery.data;
         if (ctx.wizard.state.fwd_text) {
-            ctx.replyWithHTML(`📝 <b>Xabar matni (Forward):</b>\n\n<i>${ctx.wizard.state.fwd_text}</i>\n\n<b>Tahrirlaymizmi?</b>`, 
-                Markup.inlineKeyboard([[Markup.button.callback("📝 Tahrirlash", "edit_fwd"), Markup.button.callback("✅ Ha, yuborish", "keep_fwd")]]));
-        } else {
-            ctx.replyWithHTML("📝 <b>Topshiriq matnini yozing:</b>");
-        }
+            ctx.replyWithHTML(`📝 <b>Mazmun (Forward):</b>\n<i>${ctx.wizard.state.fwd_text}</i>\n\n<b>Tahrirlaymizmi?</b>`, 
+                Markup.inlineKeyboard([[Markup.button.callback("📝 Tahrirlash", "edit_fwd"), Markup.button.callback("✅ Ha", "keep_fwd")]]));
+        } else ctx.replyWithHTML("📝 <b>Matnni yozing:</b>");
         return ctx.wizard.next();
     },
     (ctx) => {
-        if (ctx.callbackQuery && ctx.callbackQuery.data === 'edit_fwd') { ctx.reply("✍️ Tahrirlab yuboring:"); return; }
+        if (ctx.callbackQuery?.data === 'edit_fwd') { ctx.reply("✍️ Tahrirlang:"); return; }
         if (ctx.message) ctx.wizard.state.taskText = ctx.message.text;
-        else if (ctx.callbackQuery && ctx.callbackQuery.data === 'keep_fwd') ctx.wizard.state.taskText = ctx.wizard.state.fwd_text;
-        
-        ctx.wizard.state.attachmentIds = ctx.wizard.state.fwd_attachmentId ? [ctx.wizard.state.fwd_attachmentId] : [];
-        ctx.replyWithHTML(`📎 <b>Ilovani tashlang (Excel, rasm, h.k.):</b>`, Markup.inlineKeyboard([[Markup.button.callback("🏁 Tugatish", "finish_files")]]));
+        else if (ctx.callbackQuery?.data === 'keep_fwd') ctx.wizard.state.taskText = ctx.wizard.state.fwd_text;
+        ctx.wizard.state.attachments = ctx.wizard.state.fwd_attachmentId ? [ctx.wizard.state.fwd_attachmentId] : [];
+        ctx.replyWithHTML(`📎 <b>Hujjatlarni tashlang:</b>`, Markup.inlineKeyboard([[Markup.button.callback("🏁 Tugatish", "finish_files")]]));
         return ctx.wizard.next();
     },
     (ctx) => {
-        if (ctx.callbackQuery && ctx.callbackQuery.data === 'finish_files') { ctx.reply("⏱ Muddat? (15.04.2026 12:00)"); return ctx.wizard.next(); }
-        if (ctx.message && (ctx.message.document || ctx.message.photo || ctx.message.video)) {
-            ctx.wizard.state.attachmentIds.push(ctx.message.message_id);
-            ctx.reply(`✅ (${ctx.wizard.state.attachmentIds.length} ta). Yana bormi?`, Markup.inlineKeyboard([[Markup.button.callback("🏁 Tugatish", "finish_files")]]));
+        if (ctx.callbackQuery?.data === 'finish_files') { ctx.reply("⏱ Muddat? (15.04.2026 12:00)"); return ctx.wizard.next(); }
+        if (ctx.message?.document || ctx.message?.photo || ctx.message?.video) {
+            ctx.wizard.state.attachments.push(ctx.message.message_id);
+            ctx.reply(`✅ (${ctx.wizard.state.attachments.length}). Yana?`, Markup.inlineKeyboard([[Markup.button.callback("🏁 Tugatish", "finish_files")]]));
         }
         return;
     },
     (ctx) => {
-        const deadline = moment(ctx.message.text, "DD.MM.YYYY HH:mm", true);
-        if (!deadline.isValid()) return ctx.reply("Sana xato! (DD.MM.YYYY HH:mm)");
-        ctx.wizard.state.deadline = deadline;
-        ctx.replyWithHTML(`🏁 <b>TASDIQLASH:</b>\nBo'lim: <b>${ctx.wizard.state.topicName}</b>\nMatn: <i>${ctx.wizard.state.taskText.substring(0,50)}...</i>\n\nYuboraylikmi?`, Markup.inlineKeyboard([[Markup.button.callback("✅ Ha", "confirm_send"), Markup.button.callback("❌ Yo'q", "confirm_cancel")]]));
+        const d = moment(ctx.message.text, "DD.MM.YYYY HH:mm", true);
+        if (!d.isValid()) return ctx.reply("Xato! (DD.MM.YYYY HH:mm)");
+        ctx.wizard.state.deadline = d;
+        ctx.replyWithHTML(`🏁 <b>TASDIQLASH:</b>\nBo'lim: <b>${ctx.wizard.state.topicName}</b>\n\nYuboraylikmi?`, Markup.inlineKeyboard([[Markup.button.callback("✅ Ha", "confirm_send"), Markup.button.callback("❌ Yo'q", "confirm_cancel")]]));
         return ctx.wizard.next();
     },
     async (ctx) => {
         if (ctx.callbackQuery?.data === 'confirm_send') {
-            const reqNames = { "req_std": "Ijro yuboring.", "req_xls_pdf": "Excel + PDF!", "req_doc_pdf": "Word + PDF!", "req_any_pdf": "Elektron + Imzoli!" };
-            const caption = `🚨 <b>YANGI TOPSHIRIQ:</b>\n<i>${ctx.wizard.state.taskText}</i>\n🏁 Muddat: <b>${ctx.wizard.state.deadline.format("DD.MM.YYYY HH:mm")}</b>\n📊 Talab: <b>${reqNames[ctx.wizard.state.reqType]}</b>`;
+            const rN = { "req_std": "Fayl yuboring.", "req_xls_pdf": "Excel + PDF!", "req_doc_pdf": "Word + PDF!", "req_any_pdf": "Elektron + Imzoli!" };
+            const cap = `🚨 <b>YANGI TOPSHIRIQ:</b>\n<i>${ctx.wizard.state.taskText}</i>\n🏁 Muddat: <b>${ctx.wizard.state.deadline.format("DD.MM.YYYY HH:mm")}</b>\n📊: <b>${rN[ctx.wizard.state.reqType]}</b>`;
             let fmsg;
-            for (let i = 0; i < ctx.wizard.state.attachmentIds.length; i++) {
-                const m = await bot.telegram.copyMessage(GROUP_ID, ctx.from.id, ctx.wizard.state.attachmentIds[i], { caption: i === 0 ? caption : null, parse_mode: 'HTML', message_thread_id: ctx.wizard.state.topicId });
+            for (let i = 0; i < ctx.wizard.state.attachments.length; i++) {
+                const m = await bot.telegram.copyMessage(GROUP_ID, ctx.from.id, ctx.wizard.state.attachments[i], { caption: i === 0 ? cap : null, parse_mode: 'HTML', message_thread_id: ctx.wizard.state.topicId });
                 if (i === 0) fmsg = m;
             }
-            if (!fmsg) fmsg = await bot.telegram.sendMessage(GROUP_ID, caption, { parse_mode: 'HTML', message_thread_id: ctx.wizard.state.topicId });
+            if (!fmsg) fmsg = await bot.telegram.sendMessage(GROUP_ID, cap, { parse_mode: 'HTML', message_thread_id: ctx.wizard.state.topicId });
             const t = { id: Date.now(), msg_id: fmsg.message_id, topic_id: ctx.wizard.state.topicId, text: ctx.wizard.state.taskText, deadline: ctx.wizard.state.deadline.format("YYYY-MM-DD HH:mm:ss"), reqType: ctx.wizard.state.reqType, completed_regions: [], read_regions: [], pending_files: {} };
             db.tasks.push(t); saveDb();
             await bot.telegram.editMessageReplyMarkup(GROUP_ID, fmsg.message_id, null, { inline_keyboard: [[{ text: "👁 Tanishdim", callback_data: `read_task_${t.id}` }], [{ text: "🚀 Ijro yuborish", url: `https://t.me/${ctx.botInfo.username}?start=submit_${t.id}` }]] });
@@ -168,21 +148,21 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
 );
 
 const submitWizard = new Scenes.WizardScene('SUBMIT_WIZARD',
-    (ctx) => { const task = db.tasks.find(t => t.id == ctx.wizard.state.taskId); if (!task) return ctx.scene.leave(); const dist = getDistrict(ctx.from.id, ""); if (!dist) { ctx.reply("🚨 Avval ro'yxatdan o'ting: /start?register"); return ctx.scene.leave(); } ctx.wizard.state.task = task; ctx.wizard.state.district = dist; ctx.replyWithHTML(`📍 <b>${dist}</b>,\n"${task.text.substring(0, 30)}..." ijrosini yuboring:`); return ctx.wizard.next(); },
-    async (ctx) => { if (ctx.callbackQuery?.data === 'partial_send') { await postToGroup(ctx, ctx.wizard.state.task, ctx.wizard.state.district, true); ctx.reply("⚠️ Chala yuborildi."); return ctx.scene.leave(); } const task = ctx.wizard.state.task; const dist = ctx.wizard.state.district; if (task.reqType !== 'req_std') { if (!task.pending_files[dist]) task.pending_files[dist] = { electronic: false, confirmed: false, files: [] }; if (ctx.message?.document) { const n = ctx.message.document.file_name.toLowerCase(); if (n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.docx') || n.endsWith('.doc') || n.endsWith('.zip')) task.pending_files[dist].electronic = true; if (n.endsWith('.pdf')) task.pending_files[dist].confirmed = true; task.pending_files[dist].files.push(ctx.message.message_id); } if (ctx.message?.photo) { task.pending_files[dist].confirmed = true; task.pending_files[dist].files.push(ctx.message.message_id); } if (task.pending_files[dist].electronic && task.pending_files[dist].confirmed) { task.completed_regions.push(dist); saveDb(); await postToGroup(ctx, task, dist, false); ctx.reply("🚀 To'liq yuborildi!"); return ctx.scene.leave(); } else { saveDb(); ctx.replyWithHTML(`✅ Qabul qilindi. Nima qilamiz?`, Markup.inlineKeyboard([[Markup.button.callback("⚠️ Chala yuborish", "partial_send")], [Markup.button.callback("➕ Yana fayl bor", "wait")]])); return; } } else { task.completed_regions.push(dist); saveDb(); await postToGroup(ctx, task, dist, false); ctx.reply("🚀 Yuborildi!"); return ctx.scene.leave(); } }
+    (ctx) => { const task = db.tasks.find(t => t.id == ctx.wizard.state.taskId); if (!task) return ctx.scene.leave(); const dist = getDistrict(ctx.from.id, ""); if (!dist) { ctx.reply("🚨 Ro'yxatdan o'ting: /start?register"); return ctx.scene.leave(); } ctx.wizard.state.task = task; ctx.wizard.state.district = dist; ctx.replyWithHTML(`📍 <b>${dist}</b>,\n"${task.text.substring(0, 30)}..." ijrosini yuboring:`); return ctx.wizard.next(); },
+    async (ctx) => { if (ctx.callbackQuery?.data === 'partial_send') { await postToGroup(ctx, ctx.wizard.state.task, ctx.wizard.state.district, true); ctx.reply("⚠️ Chala yuborildi."); return ctx.scene.leave(); } const t = ctx.wizard.state.task; const dist = ctx.wizard.state.district; if (t.reqType !== 'req_std') { if (!t.pending_files[dist]) t.pending_files[dist] = { electronic: false, confirmed: false, files: [] }; if (ctx.message?.document) { const n = ctx.message.document.file_name.toLowerCase(); if (n.endsWith('.xlsx') || n.endsWith('.xls') || n.endsWith('.docx') || n.endsWith('.doc') || n.endsWith('.zip')) t.pending_files[dist].electronic = true; if (n.endsWith('.pdf')) t.pending_files[dist].confirmed = true; t.pending_files[dist].files.push(ctx.message.message_id); } if (ctx.message?.photo) { t.pending_files[dist].confirmed = true; t.pending_files[dist].files.push(ctx.message.message_id); } if (t.pending_files[dist].electronic && t.pending_files[dist].confirmed) { t.completed_regions.push(dist); saveDb(); await postToGroup(ctx, t, dist, false); ctx.reply("🚀 To'liq yuborildi!"); return ctx.scene.leave(); } else { saveDb(); ctx.replyWithHTML(`✅ Qabul qilindi. Hammasi tayyormi?`, Markup.inlineKeyboard([[Markup.button.callback("⚠️ Chala yuborish", "partial_send")], [Markup.button.callback("➕ Yana bor", "wait")]])); return; } } else { t.completed_regions.push(dist); saveDb(); await postToGroup(ctx, t, dist, false); ctx.reply("🚀 Yuborildi!"); return ctx.scene.leave(); } }
 );
 
 async function postToGroup(ctx, task, district, isPartial) {
-    const status = isPartial ? "⚠️ CHALA IJRO" : "✅ TO'LIQ IJRO";
-    const caption = `🔄 <b>${district.toUpperCase()}</b> ijro yubordi:\n📝 <i>${task.text.substring(0, 50)}...</i>\n📊: <b>${status}</b>\n\n#ijro_nazorati`;
-    const files = task.pending_files[district]?.files || [ctx.message.message_id];
-    for (const mid of files) await bot.telegram.copyMessage(GROUP_ID, ctx.from.id, mid, { message_thread_id: task.topic_id, caption: mid === files[0] ? caption : null, parse_mode: 'HTML' });
+    const s = isPartial ? "⚠️ CHALA IJRO" : "✅ TO'LIQ IJRO";
+    const cap = `🔄 <b>${district.toUpperCase()}</b> ijro yubordi:\n📝 <i>${task.text.substring(0, 50)}...</i>\n📊: <b>${s}</b>\n\n#ijro_nazorati`;
+    const f = task.pending_files[district]?.files || [ctx.message.message_id];
+    for (const mid of f) await bot.telegram.copyMessage(GROUP_ID, ctx.from.id, mid, { message_thread_id: task.topic_id, caption: mid === f[0] ? cap : null, parse_mode: 'HTML' });
 }
 
 const regWizard = new Scenes.WizardScene('REG_WIZARD',
-    (ctx) => { ctx.replyWithHTML("🤖 Tumaningiz:", Markup.inlineKeyboard(HUDUD_KEYWORDS.map(k => [Markup.button.callback(k, `reg_h_${k}`)]))); return ctx.wizard.next(); },
-    (ctx) => { if (!ctx.callbackQuery) return; ctx.wizard.state.regDistrict = ctx.callbackQuery.data.replace('reg_h_', ''); ctx.reply("F.I.Sh.ingiz?"); return ctx.wizard.next(); },
-    (ctx) => { const uid = ctx.from.id; users_db[uid] = { district: ctx.wizard.state.regDistrict, fio: ctx.message.text, username: ctx.from.username }; fs.writeFileSync(USERS_DB_PATH, JSON.stringify(users_db, null, 2)); ctx.reply("✅ Tayyor."); return ctx.scene.leave(); }
+    (ctx) => { ctx.replyWithHTML("🤖 Tuman:", Markup.inlineKeyboard(HUDUD_KEYWORDS.map(k => [Markup.button.callback(k, `reg_h_${k}`)]))); return ctx.wizard.next(); },
+    (ctx) => { if (!ctx.callbackQuery) return; ctx.wizard.state.regDistrict = ctx.callbackQuery.data.replace('reg_h_', ''); ctx.reply("F.I.Sh?"); return ctx.wizard.next(); },
+    (ctx) => { users_db[ctx.from.id] = { district: ctx.wizard.state.regDistrict, fio: ctx.message.text, username: ctx.from.username }; fs.writeFileSync(USERS_DB_PATH, JSON.stringify(users_db, null, 2)); ctx.reply("✅ Tayyor."); return ctx.scene.leave(); }
 );
 
 const stage = new Scenes.Stage([taskWizard, submitWizard, regWizard]);
@@ -201,7 +181,7 @@ bot.action('fwd_create', (ctx) => { const data = ctx.session.fwd_data; ctx.scene
 
 bot.start(async (ctx) => {
     const p = ctx.startPayload;
-    if (p && p.startsWith('submit_')) return ctx.scene.enter('SUBMIT_WIZARD', { taskId: p.replace('submit_', '') });
+    if (p?.startsWith('submit_')) return ctx.scene.enter('SUBMIT_WIZARD', { taskId: p.replace('submit_', '') });
     if (p === 'register') return ctx.scene.enter('REG_WIZARD');
     ctx.replyWithHTML("🤖 <b>Nazoratchi Bot Online!</b>\n\n/vazifa_yangi — Yangi topshiriq");
 });
@@ -218,24 +198,10 @@ bot.action(/^read_task_(\d+)$/, async (ctx) => {
 cron.schedule('*/15 * * * *', () => {
     db.tasks.forEach(t => {
         const missing = HUDUD_KEYWORDS.filter(r => !t.read_regions.includes(r));
-        if (missing.length > 0) {
-            bot.telegram.sendMessage(GROUP_ID, `⚠️ <b>TANISHMAGANLAR:</b>\n🔴 <code>${missing.join(', ')}</code>`, { parse_mode: 'HTML', message_thread_id: t.topic_id })
-                .catch(err => console.error("Cron Notify Error:", err.message));
-        }
+        if (missing.length > 0) bot.telegram.sendMessage(GROUP_ID, `⚠️ <b>TANISHMAGANLAR:</b>\n🔴 <code>${missing.join(', ')}</code>`, { parse_mode: 'HTML', message_thread_id: t.topic_id });
     });
 }, { timezone: "Asia/Tashkent" });
 
-console.log("🔄 Botni Telegram bilan ulash (bot.launch)...");
-bot.launch({ dropPendingUpdates: true })
-    .then(() => {
-        console.log("✅ PRODUCTION BOT ONLINE VA POLLING BOSHLANDI!");
-        console.log("Bot username:", bot.botInfo?.username);
-    })
-    .catch((err) => {
-        console.error("❌ Bot launch error (Telegram bilan aloqa yo'q):", err);
-        process.exit(1); 
-    });
-
-// Enable graceful stop
+bot.launch().then(() => console.log("PRODUCTION BOT ONLINE"));
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => { bot.stop('SIGTERM'); server.close(); });
