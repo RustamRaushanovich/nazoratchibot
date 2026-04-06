@@ -208,10 +208,20 @@ bot.action(/^read_task_(\d+)$/, async (ctx) => {
 cron.schedule('*/15 * * * *', () => {
     db.tasks.forEach(t => {
         const missing = HUDUD_KEYWORDS.filter(r => !t.read_regions.includes(r));
-        if (missing.length > 0) bot.telegram.sendMessage(GROUP_ID, `⚠️ <b>TANISHMAGANLAR:</b>\n🔴 <code>${missing.join(', ')}</code>`, { parse_mode: 'HTML', message_thread_id: t.topic_id });
+        if (missing.length > 0) {
+            bot.telegram.sendMessage(GROUP_ID, `⚠️ <b>TANISHMAGANLAR:</b>\n🔴 <code>${missing.join(', ')}</code>`, { parse_mode: 'HTML', message_thread_id: t.topic_id })
+                .catch(err => console.error("Cron Notify Error:", err.message));
+        }
     });
 }, { timezone: "Asia/Tashkent" });
 
-bot.launch().then(() => console.log("PRODUCTION BOT ONLINE"));
+bot.launch({ dropPendingUpdates: true })
+    .then(() => console.log("🚀 PRODUCTION BOT ONLINE AND POLLING"))
+    .catch((err) => {
+        console.error("❌ Bot launch error:", err);
+        process.exit(1); 
+    });
+
+// Enable graceful stop
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => { bot.stop('SIGTERM'); server.close(); });
