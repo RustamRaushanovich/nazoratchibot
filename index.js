@@ -117,7 +117,12 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
     (ctx) => {
         if (!ctx.callbackQuery) return ctx.reply("Илтимос, бўлимни танланг.");
         ctx.wizard.state.topicId = ctx.callbackQuery.data.replace('topic_', '');
-        ctx.wizard.state.topicName = db.topics.find(t => t.id == ctx.wizard.state.topicId).name;
+        const topic = db.topics.find(t => t.id == ctx.wizard.state.topicId);
+        if (!topic) {
+            ctx.reply("❌ Бўлим топилмади. Қайтадан ҳаракат қилинг.");
+            return ctx.scene.leave();
+        }
+        ctx.wizard.state.topicName = topic.name;
         ctx.replyWithHTML("⏱ <b>Ижро муддатини ёзинг (соатда):</b>\nМисол учун: 24");
         return ctx.wizard.next();
     },
@@ -216,9 +221,14 @@ bot.on('message', (ctx, next) => {
 // START
 bot.start((ctx) => {
     ctx.replyWithHTML("🤖 <b>Гуруҳ Назоратчиси Ботига хуш келибсиз!</b>\n\n" +
-    "Топшириқни ботнинг личкасида ёзиб, гуруҳ бўлимларига юборишингиз мумкин.\n\n" +
-    "📍 <b>Буйруқ:</b>\n/vazifa_yangi — Янги топшириқ яратиш");
+    "Топшириқни ботнинг личкаasida ёзиб, гуруҳ бўлимларига юборишингиз мумкин.\n\n" +
+    "📍 <b>Меnu:</b>", Markup.keyboard([
+        ['🚀 Yangi topshiriq', '📊 Tahlil']
+    ]).resize());
 });
+
+bot.hears('🚀 Yangi topshiriq', (ctx) => ctx.scene.enter('TASK_WIZARD'));
+bot.hears('📊 Tahlil', (ctx) => ctx.reply("Iltimos, guruh ichida /tahlil buyrug'idan foydalaning."));
 
 // CALLBACK QUERY HANDLING
 bot.on('callback_query', async (ctx) => {
@@ -347,11 +357,12 @@ cron.schedule('*/30 * * * *', () => {
 
 bot.launch({ dropPendingUpdates: true })
     .then(() => console.log("ADVANCED TOPIC SUPERVISOR ONLINE"))
-    .catch(err => console.error("Bot launch error:", err));
+    .catch(err => {
+        console.error("Bot launch error:", err);
+        process.exit(1);
+    });
 
-// Enable graceful stop
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => {
-    bot.stop('SIGTERM');
-    server.close();
+// Global Error Handling to prevent crashes
+bot.catch((err, ctx) => {
+    console.error(`Ooops, encountered an error for ${ctx.updateType}`, err);
 });
