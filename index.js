@@ -4,19 +4,19 @@ const moment = require('moment-timezone');
 const cron = require('node-cron');
 const http = require('http');
 
-// SERVER FOR RENDER (Keep-alive)
+// SERVER FOR RENDER
 const PORT = process.env.PORT || 10000;
-const server = http.createServer((req, res) => res.end('BOT IS ONLINE\n'));
+const server = http.createServer((req, res) => res.end('SUPERVISOR BOT ONLINE\n'));
 server.listen(PORT, '0.0.0.0');
 
 const TOKEN = '8629827264:AAH1OBjYsuzi4OwcMp-KGUmssV9OWXdDGE0';
-const ADMINS = [65002404, 786314811, 5310405293, 121730039];
+const ADMINS = [65002404, 786314811, 5310405293, 121730039, 5310405293]; 
 const ADMIN_PHONES = ['998916523484', '998942729194', '998903034201'];
 const GROUP_ID = '-1002262665652';
 
 const bot = new Telegraf(TOKEN);
 
-// Admin check helper
+// Admin check
 const isAdmin = (uid) => ADMINS.includes(Number(uid));
 
 const DB_PATH = './supervisor_db.json';
@@ -30,7 +30,7 @@ const HUDUD_KEYWORDS = [
     "Qo‘qon shahri", "Quvasoy shahri", "Yozyovon tumani"
 ];
 
-// Bo'limlar ro'yxati (Pre-filled for ease of use)
+// Bo'limlar ro'yxati (Pre-filled)
 const INITIAL_TOPICS = [
     { id: 20758, name: "Tezkor topshiriqlar" }, { id: 20759, name: "Oila va xotin-qizlar" },
     { id: 20760, name: "Ijtimoiy soha" }, { id: 20761, name: "Yoshlar masalalari" },
@@ -75,15 +75,17 @@ function getDistrict(uid, name = "") {
 // --- TASK WIZARD ---
 const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
     (ctx) => {
+        // BIRINCHI QADAM: BO'LIMLARNI CHIQARISH
         const topicButtons = db.topics.map(t => [Markup.button.callback(t.name, `sel_topic_${t.id}`)]);
-        ctx.replyWithHTML("📂 <b>Bo'limni tanlang:</b>", Markup.inlineKeyboard(topicButtons));
+        ctx.replyWithHTML("📂 <b>Topshiriq qaysi bo'limga yuborilsin?</b>", Markup.inlineKeyboard(topicButtons));
         return ctx.wizard.next();
     },
     (ctx) => {
-        if (!ctx.callbackQuery) return ctx.reply("Bo'limni tanlang.");
+        if (!ctx.callbackQuery) return ctx.reply("Iltimos, bo'limni tanlang.");
         ctx.wizard.state.topicId = ctx.callbackQuery.data.replace('sel_topic_', '');
         ctx.wizard.state.topicName = db.topics.find(t => t.id == ctx.wizard.state.topicId).name;
-        ctx.replyWithHTML("⚙️ <b>Ijro turi:</b>", Markup.inlineKeyboard([
+        
+        ctx.replyWithHTML(`📍 Bo'lim: <b>${ctx.wizard.state.topicName}</b>\n\n⚙️ <b>Ijro turini tanlang:</b>`, Markup.inlineKeyboard([
             [Markup.button.callback("✅ Standart", "req_std")],
             [Markup.button.callback("📊 Excel + PDF", "req_xls_pdf")],
             [Markup.button.callback("📂 Word + PDF", "req_doc_pdf")],
@@ -92,10 +94,11 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         return ctx.wizard.next();
     },
     (ctx) => {
-        if (!ctx.callbackQuery) return ctx.reply("Tanlang.");
+        if (!ctx.callbackQuery) return ctx.reply("Ijro turini tanlang.");
         ctx.wizard.state.reqType = ctx.callbackQuery.data;
+
         if (ctx.wizard.state.fwd_text) {
-            ctx.replyWithHTML(`📝 <b>Mazmun (Forward qilingan):</b>\n\n<i>${ctx.wizard.state.fwd_text}</i>\n\n<b>Matndan masullarni o'chirish uchun tahrirlaysizmi?</b>`, 
+            ctx.replyWithHTML(`📝 <b>Xabar matni (Forward):</b>\n\n<i>${ctx.wizard.state.fwd_text}</i>\n\n<b>Uni tahrirlaysizmi?</b>`, 
                 Markup.inlineKeyboard([[Markup.button.callback("📝 Tahrirlash", "edit_fwd"), Markup.button.callback("✅ Ha, yuborish", "keep_fwd")]]));
         } else {
             ctx.replyWithHTML("📝 <b>Topshiriq matnini yozing:</b>");
@@ -111,13 +114,13 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         else if (ctx.callbackQuery && ctx.callbackQuery.data === 'keep_fwd') ctx.wizard.state.taskText = ctx.wizard.state.fwd_text;
         
         ctx.wizard.state.attachmentIds = ctx.wizard.state.fwd_attachmentId ? [ctx.wizard.state.fwd_attachmentId] : [];
-        ctx.replyWithHTML(`📎 <b>Hujjatlarni (Excel, rasm) yuboring:</b>\n\nFayllarni birma-bir tashlang va oxirida <b>'🏁 Tugatish'</b> tugmasini bosing:`,
+        ctx.replyWithHTML(`📎 <b>Ilovalarni tashlang (fayl, rasm):</b>\n\nTugatgach <b>'🏁 Tugatish'</b> tugmasini bosing:`,
             Markup.inlineKeyboard([[Markup.button.callback("🏁 Tugatish", "finish_files")]]));
         return ctx.wizard.next();
     },
     (ctx) => {
         if (ctx.callbackQuery && ctx.callbackQuery.data === 'finish_files') {
-            ctx.replyWithHTML("⏱ <b>Ijro muddatini kiriting:</b> (DD.MM.YYYY HH:mm)");
+            ctx.replyWithHTML("⏱ <b>Ijro muddatini kiriting:</b> (Misol: 10.04.2026 18:00)");
             return ctx.wizard.next();
         }
         if (ctx.message && (ctx.message.document || ctx.message.photo || ctx.message.video)) {
@@ -129,7 +132,7 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
     },
     (ctx) => {
         const deadline = moment(ctx.message.text, "DD.MM.YYYY HH:mm", true);
-        if (!deadline.isValid()) return ctx.reply("Format: DD.MM.YYYY HH:mm");
+        if (!deadline.isValid()) return ctx.reply("Format xato! DD.MM.YYYY HH:mm yozing:");
         ctx.wizard.state.deadline = deadline;
         
         ctx.replyWithHTML(`🏁 <b>TASDIQLASH:</b>\n` +
@@ -141,10 +144,10 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         return ctx.wizard.next();
     },
     async (ctx) => {
-        if (!ctx.callbackQuery || ctx.callbackQuery.data === 'confirm_cancel') { ctx.reply("Bekor qilindi."); return ctx.scene.leave(); }
+        if (!ctx.callbackQuery || ctx.callbackQuery.data === 'confirm_cancel') { ctx.reply("Topshiriq bekor qilindi."); return ctx.scene.leave(); }
 
-        const reqHelp = {
-            "req_std": "Bajarilgach ijro faylini yuboring.",
+        const reqNames = {
+            "req_std": "Bajarilgach fayl yuboring.",
             "req_xls_pdf": "Majburiy Excel va PDF/Rasm (imzoli) shaklda!",
             "req_doc_pdf": "Majburiy Word va PDF/Rasm (imzoli) shaklda!",
             "req_any_pdf": "Elektron va Imzoli fayllar majburiy!"
@@ -153,7 +156,7 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
         const caption = `🚨 <b>YANGI TOPSHIRIQ:</b>\n` +
             `📝 <i>${ctx.wizard.state.taskText}</i>\n` +
             `🏁 Muddat: <b>${ctx.wizard.state.deadline.format("DD.MM.YYYY HH:mm")}</b> gacha\n` +
-            `📊 Talab: <b>${reqHelp[ctx.wizard.state.reqType]}</b>\n\n` +
+            `📊 Talab: <b>${reqNames[ctx.wizard.state.reqType]}</b>\n\n` +
             `#topshiriq_nazorati`;
 
         let firstMsg;
@@ -199,9 +202,9 @@ const submitWizard = new Scenes.WizardScene('SUBMIT_WIZARD',
         const task = db.tasks.find(t => t.id == payload);
         if (!task) return ctx.scene.leave();
         const district = getDistrict(ctx.from.id, "");
-        if (!district) { ctx.reply("🚨 Ro'yxatdan o'ting: /start"); return ctx.scene.leave(); }
+        if (!district) { ctx.reply("🚨 Avval ro'yxatdan o'ting: /start?register"); return ctx.scene.leave(); }
         ctx.wizard.state.task = task; ctx.wizard.state.district = district;
-        ctx.replyWithHTML(`📍 <b>${district}</b> mas'uli,\n"${task.text.substring(0, 30)}..." bo'yicha ijroni topshiring:`);
+        ctx.replyWithHTML(`📍 <b>${district}</b>,\n"${task.text.substring(0, 30)}..." bo'yicha ijro yuboring:`);
         return ctx.wizard.next();
     },
     async (ctx) => {
@@ -226,7 +229,7 @@ const submitWizard = new Scenes.WizardScene('SUBMIT_WIZARD',
             if (task.pending_files[district].electronic && task.pending_files[district].confirmed) {
                 task.completed_regions.push(district); saveDb();
                 await postToGroup(ctx, task, district, false);
-                ctx.reply("🚀 To'liq ijro guruhga yuborildi!"); return ctx.scene.leave();
+                ctx.reply("🚀 To'liq ijro yuborildi!"); return ctx.scene.leave();
             } else {
                 saveDb();
                 ctx.replyWithHTML(`✅ Qabul qilindi. Hammasi tayyormi?`,
@@ -252,10 +255,11 @@ async function postToGroup(ctx, task, district, isPartial) {
     }
 }
 
+// --- REGISTRATION ---
 const regWizard = new Scenes.WizardScene('REG_WIZARD',
-    (ctx) => { ctx.replyWithHTML("🤖 Tanlang:", Markup.inlineKeyboard(HUDUD_KEYWORDS.map(k => [Markup.button.callback(k, `reg_h_${k}`)]))); return ctx.wizard.next(); },
-    (ctx) => { ctx.wizard.state.regDistrict = ctx.callbackQuery.data.replace('reg_h_', ''); ctx.reply("F.I.Sh.ingiz?"); return ctx.wizard.next(); },
-    (ctx) => { const uid = ctx.from.id; users_db[uid] = { district: ctx.wizard.state.regDistrict, fio: ctx.message.text, username: ctx.from.username }; fs.writeFileSync(USERS_DB_PATH, JSON.stringify(users_db, null, 2)); ctx.reply("✅ Tayyor."); return ctx.scene.leave(); }
+    (ctx) => { ctx.replyWithHTML("🤖 Tumanlar:", Markup.inlineKeyboard(HUDUD_KEYWORDS.map(k => [Markup.button.callback(k, `reg_h_${k}`)]))); return ctx.wizard.next(); },
+    (ctx) => { if (!ctx.callbackQuery) return; ctx.wizard.state.regDistrict = ctx.callbackQuery.data.replace('reg_h_', ''); ctx.reply("F.I.Sh.ingiz?"); return ctx.wizard.next(); },
+    (ctx) => { const uid = ctx.from.id; users_db[uid] = { district: ctx.wizard.state.regDistrict, fio: ctx.message.text, username: ctx.from.username }; fs.writeFileSync(USERS_DB_PATH, JSON.stringify(users_db, null, 2)); ctx.reply("✅ Ro'yxatdan o'tdingiz."); return ctx.scene.leave(); }
 );
 
 const globalStage = new Scenes.Stage([taskWizard, submitWizard, regWizard]);
@@ -280,17 +284,18 @@ bot.action('fwd_create', (ctx) => {
 bot.start(async (ctx) => {
     const p = ctx.startPayload;
     if (p && p.startsWith('submit_')) return ctx.scene.enter('SUBMIT_WIZARD', { taskId: p.replace('submit_', '') });
-    ctx.replyWithHTML("🤖 Nazoratchi Bot Online!\n\n/vazifa_yangi — Yangi topshiriq");
+    if (p === 'register') return ctx.scene.enter('REG_WIZARD');
+    ctx.replyWithHTML("🤖 <b>Nazoratchi Bot Online!</b>\n\n/vazifa_yangi — Yangi topshiriq");
 });
 
-bot.command('vazifa_yangi', (ctx) => { if (isAdmin(ctx.from.id)) ctx.scene.enter('TASK_WIZARD'); });
+bot.command('vazifa_yangi', (ctx) => { if (isAdmin(ctx.from.id)) ctx.scene.enter('TASK_WIZARD'); else ctx.reply("🚨 Faqat adminlar topshiriq bera oladi."); });
 
 bot.action(/^read_task_(\d+)$/, async (ctx) => {
     const taskId = ctx.match[1]; const task = db.tasks.find(t => t.id == taskId);
     if (!task) return;
     const district = getDistrict(ctx.from.id, "");
-    if (!district) return;
-    if (task.read_regions.includes(district)) return;
+    if (!district) return ctx.answerCbQuery("Ro'yxatdan o'ting!", { show_alert: true });
+    if (task.read_regions.includes(district)) return ctx.answerCbQuery("Tanishgansiz.");
     task.read_regions.push(district); saveDb();
     ctx.reply(`👁 <b>${district}</b> topshiriq bilan tanishdi.`, { parse_mode: 'HTML' });
 });
@@ -304,6 +309,6 @@ cron.schedule('*/15 * * * *', () => {
     });
 }, { timezone: "Asia/Tashkent" });
 
-bot.launch().then(() => console.log("FINAL PRODUCTION BOT ONLINE"));
+bot.launch().then(() => console.log("PRODUCTION BOT ONLINE"));
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => { bot.stop('SIGTERM'); server.close(); });
