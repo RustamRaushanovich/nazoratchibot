@@ -99,7 +99,17 @@ const taskWizard = new Scenes.WizardScene('TASK_WIZARD',
     },
     (ctx) => {
         ctx.wizard.state.taskText = ctx.message.text;
-        const topicButtons = db.topics.map(t => [Markup.button.callback(t.name, `topic_${t.id}`)]);
+        
+        // Buttons in 2 columns for better UI
+        const topicButtons = [];
+        for (let i = 0; i < db.topics.length; i += 2) {
+            const row = [Markup.button.callback(db.topics[i].name, `topic_${db.topics[i].id}`)];
+            if (db.topics[i + 1]) {
+                row.push(Markup.button.callback(db.topics[i + 1].name, `topic_${db.topics[i + 1].id}`));
+            }
+            topicButtons.push(row);
+        }
+
         ctx.replyWithHTML("📂 <b>Топшириқ қайси бўлимга юборилсин?</b>", 
             Markup.inlineKeyboard(topicButtons.length > 0 ? topicButtons : [[Markup.button.callback("❌ Бўлимлар йўқ", "none")]]));
         return ctx.wizard.next();
