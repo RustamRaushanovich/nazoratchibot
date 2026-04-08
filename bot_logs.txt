@@ -1,0 +1,8 @@
+[19:37:06] 🚀 STARTING BOT POLLING...
+[19:37:06] 🚀 SERVER ONLINE ON PORT 10000
+[19:37:35] [SCANNER] Msg from 104416763, Topic ID: 10778, Text: Тушунарли
+[19:37:57] [SCANNER] Msg from 341362677, Topic ID: 34015, Text: Тушунарли
+[19:43:04] [API] Payload received. Length: 54087
+[19:43:40] [API] Payload received. Length: 54110
+[19:43:40] [API] Attempting broadcast to topic: 1
+[19:43:40] [API] ERROR on Topic 1: 400: Bad Request: message thread not found

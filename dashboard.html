@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GURUH NAZORATI | V13.1 EXECUTIVE SUITE</title>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0b0f19;
+            --card: #161c2d;
+            --primary: #3366ff;
+            --success: #00ab55;
+            --warning: #ffab00;
+            --error: #ff4842;
+            --text: #ffffff;
+            --text-secondary: #919eab;
+        }
+        * { margin:0; padding:0; box-sizing: border-box; font-family: 'Public Sans', sans-serif; }
+        body { background: var(--bg); color: var(--text); min-height: 100vh; padding: 20px; }
+        
+        .container { max-width: 1400px; margin: 0 auto; position: relative; }
+        
+        /* NAVIGATION BAR - FIXED AT TOP */
+        .nav { 
+            display: flex; gap: 15px; margin-bottom: 30px; 
+            border-bottom: 1px solid #2d3748; padding-bottom: 20px; 
+            position: sticky; top: 0; background: var(--bg); z-index: 1000;
+            padding-top: 10px;
+        }
+        .nav-item { 
+            padding: 12px 25px; border-radius: 12px; cursor: pointer; 
+            transition: 0.3s; font-weight: 700; opacity: 0.5; font-size: 14px;
+            background: #1e293b; color: #fff; border: 1px solid transparent;
+        }
+        .nav-item.active { background: var(--primary); opacity: 1; box-shadow: 0 8px 16px rgba(51, 102, 255, 0.3); }
+
+        .section { display: none; }
+        .section.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .card { background: var(--card); border-radius: 24px; padding: 35px; border: 1px solid #2d3748; margin-top: 10px; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+        .form-group { margin-bottom: 25px; }
+        label { display: block; margin-bottom: 12px; color: var(--text-secondary); font-size: 14px; font-weight: 600; line-height: 1.5; }
+        textarea, select, input { width: 100%; background: #212b36; border: 1px solid #3d4957; border-radius: 12px; padding: 15px; color: #fff; outline: none; }
+        textarea:focus, input:focus { border-color: var(--primary); }
+        
+        .checkbox-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; max-height: 250px; overflow-y: auto; padding-right: 10px; }
+        .check-item { background: #212b36; padding: 15px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; font-size: 13px; border: 1px solid #334155; }
+        .check-item input { width: 22px; height: 22px; cursor: pointer; }
+        
+        .btn-submit { background: var(--primary); color: #fff; border: none; padding: 22px; width: 100%; border-radius: 16px; font-weight: 800; font-size: 18px; cursor: pointer; margin-top: 20px; box-shadow: 0 8px 16px rgba(51, 102, 255, 0.2); }
+
+        .edit-box { background: rgba(51, 102, 255, 0.1); border: 2px dashed var(--primary); padding: 25px; border-radius: 20px; margin-bottom: 30px; display: flex; gap: 20px; align-items: center; }
+        .btn-search { background: var(--primary); color: #fff; border: none; padding: 12px 30px; border-radius: 12px; font-weight: 800; cursor: pointer; }
+
+        .stats-table { width: 100%; border-collapse: collapse; margin-top: 20px; text-align: left; }
+        .stats-table th { padding: 15px; border-bottom: 2px solid #334155; color: var(--text-secondary); font-size: 12px; text-transform: uppercase; }
+        .stats-table td { padding: 15px; border-bottom: 1px solid #2d3748; }
+        
+        .rating-bar { height: 8px; background: #212b36; border-radius: 10px; overflow: hidden; width: 120px; }
+        .rating-fill { height: 100%; transition: width 1s ease; }
+
+        /* FOOTER DESIGN */
+        .skyline-footer {
+            margin-top: 50px;
+            width: 100%;
+            height: 140px;
+            background-color: #1a2a47; 
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            padding: 20px 40px;
+            border-radius: 24px;
+            overflow: hidden;
+            border: 1px solid #1e293b;
+            color: #fff;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+        }
+        
+        .skyline-sequence {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-around;
+            padding: 0 50px;
+            pointer-events: none;
+            opacity: 0.6; /* Silhouette feel */
+        }
+        
+        .landmark-icon {
+            height: 100px;
+            width: auto;
+            object-fit: contain;
+            filter: brightness(0.8) contrast(1.2);
+        }
+
+        .footer-content {
+            position: relative;
+            z-index: 5;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+        }
+
+        .footer-left { font-size: 14px; opacity: 0.9; font-weight: 600; }
+        
+        .footer-center {
+            background: #00ab55;
+            padding: 5px 15px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 2px solid #008f47;
+            box-shadow: 0 0 15px rgba(0, 171, 85, 0.3);
+        }
+        .footer-center .count { font-size: 24px; font-weight: 900; }
+        .footer-center .details { font-size: 10px; line-height: 1; text-align: right; }
+
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 14px;
+        }
+        .tg-icon {
+            width: 40px;
+            height: 40px;
+            background: #0088cc;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0, 136, 204, 0.4);
+            transition: 0.3s;
+            cursor: pointer;
+        }
+        .tg-icon:hover { transform: scale(1.1); background: #0099e6; }
+        .tg-icon svg { width: 22px; height: 22px; fill: white; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="nav">
+        <div class="nav-item active" onclick="showTab('tab-create', this)">🚀 TOPSHIRIQLAR NAZORATI</div>
+        <div class="nav-item" onclick="showTab('tab-dashboard', this)">📋 TOPSHIRIQLAR RO'YXATI</div>
+        <div class="nav-item" onclick="showTab('tab-analytics', this)">📊 GLOBAL ANALYTIKA & REYTING</div>
+    </div>
+
+    <!-- TAB 1: CREATE / EDIT -->
+    <div id="tab-create" class="section active">
+        <div class="edit-box">
+            <div style="font-weight: 800; color: var(--primary); font-size: 18px;">✏️ TAHRIRLASH:</div>
+            <div style="display:flex; gap:15px; flex-grow:1;">
+                <input type="text" id="editId" placeholder="Topshiriq ID raqami (Masalan: 02/00001)">
+                <button class="btn-search" onclick="searchAndLoad()">🔍 MA'LUMOTLARNI YUKLASH</button>
+            </div>
+            <div id="searchStatus" style="font-weight: 800; font-size: 12px;"></div>
+        </div>
+
+        <div class="card">
+            <h2 id="formTitle" style="margin-bottom: 35px; border-left: 5px solid var(--primary); padding-left: 15px;">
+                🚀 <span id="formTitleText">Yangi topshiriq yaratish</span>
+            </h2>
+            
+            <div class="form-grid">
+                <div>
+                    <div class="form-group">
+                        <label>📝 Topshiriq matni</label>
+                        <textarea id="taskText" rows="6" placeholder="Bu yerga topshiriq matnini batafsil kiriting..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>📎 Fayl(lar)ni yuklash (Ilova qilish - Multi select)</label>
+                        <input type="file" id="taskFiles" multiple style="background: #212b36; border: 2px dashed #3d4957; padding: 20px;">
+                    </div>
+                    <div class="form-group" style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+                        <div><label>📅 Tugash kuni</label><input type="date" id="deadlineDate"></div>
+                        <div><label>🕒 Tugash vaqti</label><input type="time" id="deadlineTime"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="form-group">
+                        <label>👤 Kim tomonidan berilmoqda?</label>
+                        <select id="creatorId">
+                            <option value="02">Rahbar (RT) - [02]</option>
+                            <option value="01">D. Kasimova - [01]</option>
+                            <option value="03">Abrorjon Azimov - [03]</option>
+                            <option value="04">Dilshodjon Azamov - [04]</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>📂 ТТТИМ ва МТТТЭ (ижро учун) гурухидаги бўлимлардан бирини танланг</label>
+                        <div id="topicGrid" class="checkbox-grid">
+                            <!-- JS populated -->
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>❓ Topshiriq ijrosi talab etiladimi?</label>
+                        <select id="isExecRequired" onchange="toggleExecutionDetails()">
+                            <option value="no">Yo'q (Faqat ma'lumot uchun)</option>
+                            <option value="yes">Ha (Ijro talab etiladi)</option>
+                        </select>
+                    </div>
+                    <div id="execDetailsBox" class="form-group" style="display: none;">
+                        <label>🛠 Сиз берган топшириқларни ижросини қандай ҳолатda топширишлаri кеrak?</label>
+                        <div class="checkbox-grid" style="grid-template-columns: 1fr;">
+                            <label class="check-item">📂 Word (matn ko'rinishida) <input type="checkbox" name="etype" value="Word"></label>
+                            <label class="check-item">📊 Excel (Jadval ko'rinishida) <input type="checkbox" name="etype" value="Excel"></label>
+                            <label class="check-item">🖼 Rasm / Foto (Amaliy isbot) <input type="checkbox" name="etype" value="Rasm"></label>
+                            <label class="check-item">📜 Tasdiqlangan (Hujjatli PDF/Scan) <input type="checkbox" name="etype" value="PDF"></label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <button id="submitBtn" class="btn-submit" onclick="handleSubmission()">🚀 TOPSHIRIQNI YUBORISH</button>
+        </div>
+    </div>
+
+    <!-- TAB 2: LIST -->
+    <div id="tab-dashboard" class="section">
+        <div id="dashGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(400px, 1fr)); gap:25px;"></div>
+    </div>
+
+    <!-- TAB 3: ANALYTICS -->
+    <div id="tab-analytics" class="section">
+        <div class="card">
+            <h2 style="margin-bottom: 25px;">🏆 HUDUDLAR REYTINGI</h2>
+            <table class="stats-table" id="statsTable">
+                <thead><tr><th>№</th><th>HUDUD NOMI</th><th>JAMI</th><th>VAQTIDA</th><th>KECH</th><th>BAJARILMAGAN</th><th>INTIZOM (%)</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- REFINED FOOTER WITH SEQUENTIAL LANDMARKS -->
+    <div class="skyline-footer">
+        <div class="skyline-sequence">
+            <img src="icon_arch.png" class="landmark-icon" alt="Arch">
+            <img src="icon_fergani.png" class="landmark-icon" alt="Fergani">
+            <img src="icon_hokimiyat.png" class="landmark-icon" alt="Hokimiyat">
+            <img src="icon_palace.png" class="landmark-icon" alt="Palace">
+        </div>
+
+        <div class="footer-content">
+            <div class="footer-left">
+                © <span id="year">2026</span> supervisor.uz
+            </div>
+            
+            <div class="footer-center">
+                <div class="count" id="totalTasksCount">0</div>
+                <div class="details">
+                    Jami<br>Topshiriqlar
+                </div>
+            </div>
+
+            <div class="footer-right">
+                <span>Developed by: <b>UZINFOCOM</b></span>
+                <a href="https://t.me/your_bot" target="_blank" class="tg-icon">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8c-.15 1.58-.8 5.42-1.13 7.19-.14.75-.42 1-.68 1.03-.58.05-1.02-.38-1.58-.75-.88-.58-1.38-.94-2.23-1.5-.99-.65-.35-1.01.22-1.59.15-.15 2.71-2.48 2.76-2.69.01-.03.01-.14-.07-.2-.08-.06-.19-.04-.27-.02-.11.02-1.93 1.23-5.46 3.62-.51.35-.98.52-1.4.51-.46-.01-1.35-.26-2.01-.48-.81-.27-1.45-.42-1.39-.89.03-.24.36-.49.99-.75 3.88-1.69 6.46-2.8 7.74-3.33 3.68-1.52 4.44-1.78 4.94-1.79.11 0 .36.03.52.16.14.11.18.25.2.36-.02.05-.01.12-.02.18z"/></svg>
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let dbData = { tasks: [], topics: [], districts: [], stats: {} };
+
+    function showTab(id, el) {
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+        el.classList.add('active');
+        if (id === 'tab-analytics') renderAnalytics();
+        if (id === 'tab-dashboard') refreshDashboard();
+    }
+
+    function toggleExecutionDetails() {
+        const isRequired = document.getElementById('isExecRequired').value === 'yes';
+        document.getElementById('execDetailsBox').style.display = isRequired ? 'block' : 'none';
+        if (!isRequired) {
+            document.querySelectorAll('input[name="etype"]').forEach(i => i.checked = false);
+        }
+    }
+
+    async function loadData() {
+        try {
+            const res = await fetch('/api/data?' + Date.now());
+            dbData = await res.json();
+            
+            // Update Footer Stats
+            document.getElementById('totalTasksCount').innerText = dbData.tasks.length;
+            document.getElementById('year').innerText = new Date().getFullYear();
+
+            const grid = document.getElementById('topicGrid');
+            if (dbData.topics && dbData.topics.length > 0) {
+                grid.innerHTML = dbData.topics.map(t => `
+                    <label class="check-item">
+                        ${t.name} <input type="checkbox" name="topic" value="${t.id}">
+                    </label>
+                `).join('');
+            } else {
+                grid.innerHTML = "<p style='color:orange;'>Bo'limlar yuklanmadi...</p>";
+            }
+        } catch (e) { console.error(e); }
+    }
+
+    function searchAndLoad() {
+        const id = document.getElementById('editId').value.trim();
+        const statusEl = document.getElementById('searchStatus');
+        const task = dbData.tasks.find(t => t.custom_id === id);
+        if (task) {
+            document.getElementById('taskText').value = task.text;
+            const dt = task.deadline.split(' ');
+            document.getElementById('deadlineDate').value = dt[0];
+            document.getElementById('deadlineTime').value = dt[1].substring(0, 5);
+            document.getElementById('formTitleText').innerText = "Tahrirlash: " + id;
+            document.getElementById('submitBtn').innerText = "✏️ SAQLASH";
+            statusEl.innerText = "✅ TOPILDI";
+            statusEl.style.color = "var(--success)";
+        } else {
+            statusEl.innerText = "❌ TOPILMADI";
+            statusEl.style.color = "var(--error)";
+        }
+    }
+
+    async function handleSubmission() {
+        const editId = document.getElementById('editId').value.trim();
+        const fileInput = document.getElementById('taskFiles');
+        const selectedTopics = Array.from(document.querySelectorAll('input[name="topic"]:checked')).map(i => i.value);
+        const selectedTypes = Array.from(document.querySelectorAll('input[name="etype"]:checked')).map(i => i.value);
+        
+        const isExecRequired = document.getElementById('isExecRequired').value === 'yes';
+        
+        const payload = {
+            custom_id: editId || null,
+            text: document.getElementById('taskText').value,
+            creator_id: document.getElementById('creatorId').value,
+            date: document.getElementById('deadlineDate').value,
+            time: document.getElementById('deadlineTime').value,
+            is_exec_required: isExecRequired,
+            topics: selectedTopics, exec_types: selectedTypes, files: []
+        };
+
+        if (fileInput.files.length > 0) {
+            let processed = 0;
+            for (let i = 0; i < fileInput.files.length; i++) {
+                const reader = new FileReader();
+                const currentFile = fileInput.files[i];
+                reader.onload = async () => {
+                    payload.files.push({ name: currentFile.name, data: reader.result });
+                    processed++;
+                    if (processed === fileInput.files.length) await sendToApi(editId ? '/api/edit' : '/api/create', payload);
+                };
+                reader.readAsDataURL(currentFile);
+            }
+        } else {
+            await sendToApi(editId ? '/api/edit' : '/api/create', payload);
+        }
+    }
+
+    async function sendToApi(url, payload) {
+        const res = await fetch(url, { method: 'POST', body: JSON.stringify(payload) });
+        if (res.ok) { alert("Bajarildi!"); location.reload(); }
+    }
+
+    function renderAnalytics() {
+        const tbody = document.querySelector('#statsTable tbody');
+        tbody.innerHTML = '';
+        const sorted = dbData.districts.sort((a,b) => (dbData.stats[b].onTime / (dbData.stats[b].total || 1)) - (dbData.stats[a].onTime / (dbData.stats[a].total || 1)));
+        sorted.forEach((h, i) => {
+            const s = dbData.stats[h];
+            const perc = Math.round((s.onTime / (s.total || 1)) * 100);
+            const color = perc > 85 ? 'var(--success)' : (perc > 60 ? 'var(--warning)' : 'var(--error)');
+            tbody.innerHTML += `<tr><td>${i+1}</td><td><b>${h}</b></td><td>${s.total}</td><td style="color:var(--success)">${s.onTime}</td><td>${s.late}</td><td>${s.total-s.onTime-s.late}</td><td><div style="display:flex;align-items:center;gap:10px;"><div class="rating-bar"><div class="rating-fill" style="width:${perc}%;background:${color}"></div></div><span style="color:${color};font-weight:800;">${perc}%</span></div></td></tr>`;
+        });
+    }
+
+    function refreshDashboard() {
+        const grid = document.getElementById('dashGrid');
+        grid.innerHTML = (dbData.tasks || []).slice().reverse().map(t => {
+            const total = dbData.districts.length;
+            const seen = t.seen_regions.length;
+            const comp = t.completed_regions.length;
+            const execBar = t.is_exec_required ? `
+                <div style="font-size:11px;margin-bottom:5px;margin-top:10px;">✅ Ijro: ${comp}/${total}</div>
+                <div style="height:8px;background:#212b36;border-radius:10px;overflow:hidden;"><div style="height:100%; width:${(comp/total)*100}%; background:var(--success);"></div></div>
+            ` : '';
+            
+            return `
+                <div style="background:var(--card);padding:22px;border-radius:22px;border:1px solid #334155;">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:15px;font-weight:800;color:var(--primary);">
+                        <span>ID: ${t.custom_id}</span>
+                        <span>⏱ ${t.deadline}</span>
+                    </div>
+                    <div style="margin-bottom:15px;">${t.text}</div>
+                    <div style="font-size:11px;margin-bottom:5px;">📥 Tanishish: ${seen}/${total}</div>
+                    <div style="height:8px;background:#212b36;border-radius:10px;overflow:hidden;">
+                        <div style="height:100%; width:${(seen/total)*100}%; background:#38bdf8;"></div>
+                    </div>
+                    ${execBar}
+                </div>`;
+        }).join('');
+    }
+
+    loadData();
+</script>
+</body>
+</html>
