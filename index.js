@@ -5,7 +5,7 @@ const cron = require('node-cron');
 const http = require('http');
 
 // V13.5 - EXECUTIVE (FINAL 26 TOPICS STABLE)
-const PORT = process.env.PORT || 10000;
+const PORT = process.env.PORT || 1001;
 const TOKEN = '8629827264:AAHnQ8LwpLO74NbLErGsd5ujk4xiRRRYEHw';
 const GROUP_ID = -1002262665652;
 
@@ -156,7 +156,32 @@ const server = http.createServer(async (req, res) => {
     }
     if (req.url === '/' || req.url === '/dashboard') { res.writeHead(200); return res.end(fs.readFileSync('./dashboard.html')); }
     res.writeHead(404); res.end('Not Found');
-}).listen(PORT, () => console.log(`🚀 EXECUTIVE SERVER ONLINE ON PORT ${PORT}`));
+});
+
+// ADMIN PANEL URL (Replace with your actual public URL when deployed)
+const WEB_APP_URL = 'https://' + (process.env.RENDER_EXTERNAL_HOSTNAME || 'your-service.onrender.com');
+
+bot.start((ctx) => {
+    const region = DISTRICT_ADMINS[ctx.from.id];
+    let txt = `Assalomu alaykum! **Guruh Nazorati Botiga** xush kelibsiz.\n\n`;
+    if (region) {
+        txt += `Siz **${region}** administratori sifatida ro'yxatga olingansiz.`;
+    } else {
+        txt += `Siz hozircha tizimda ro'yxatga olinmagansiz.`;
+    }
+    
+    // Only show Dashboard button to main admins or specific users if needed
+    // For now, let's allow access via /admin command for simplicity
+    ctx.replyWithHTML(txt, Markup.inlineKeyboard([
+        [Markup.button.webApp("🚀 Dashboardni ochish", WEB_APP_URL)]
+    ]));
+});
+
+bot.command('admin', (ctx) => {
+    ctx.replyWithHTML("📊 <b>Admin boshqaruv paneli:</b>", Markup.inlineKeyboard([
+        [Markup.button.webApp("🖥 Tizimni boshqarish (Mobile App)", WEB_APP_URL)]
+    ]));
+});
 
 bot.on('callback_query', async (ctx) => {
     const data = ctx.callbackQuery.data;
@@ -207,4 +232,13 @@ async function updateMonitoring(task) {
     try { await bot.telegram.editMessageText(GROUP_ID, task.monitoring_msg_id, null, text, { parse_mode: 'HTML' }); } catch (e) {}
 }
 
-bot.launch().then(() => console.log("✅ BOT EXECUTIVE ONLINE"));
+server.listen(PORT, () => console.log(`🚀 EXECUTIVE SERVER ONLINE ON PORT ${PORT}`));
+
+bot.launch().then(() => {
+    console.log("🤖 BOT POLLING STARTED");
+}).catch(err => {
+    console.error("❌ BOT LAUNCH ERROR (Conflict with Render?):", err.message);
+});
+
+process.once('SIGINT', () => bot.stop('SIGINT'));
+process.once('SIGTERM', () => bot.stop('SIGTERM'));
