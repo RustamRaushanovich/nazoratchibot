@@ -169,6 +169,7 @@ const server = http.createServer(async (req, res) => {
         return;
     }
     if (req.url === '/' || req.url === '/dashboard') { res.writeHead(200); return res.end(fs.readFileSync('./dashboard.html')); }
+    if (req.url === '/manifest.json') { res.writeHead(200, { 'Content-Type': 'application/json' }); return res.end(fs.readFileSync('./manifest.json')); }
     res.writeHead(404); res.end('Not Found');
 });
 
