@@ -130,7 +130,22 @@
     <!-- LEFT PANEL: CONTENT -->
     <div class="card">
         <div class="card-title">📝 TOPSHIRIQ MATNI</div>
-        <textarea id="task-text" rows="8" placeholder="Топшириқ мазмунини ёзинг..."></textarea>
+        
+        <label>🏷 XABAR TURI (PREFIX)</label>
+        <select id="task-prefix" style="margin-bottom:15px; font-size:15px;">
+            <option value="">-- TANLAMASLIK --</option>
+            <option value="⚠️ MUXIM: ">⚠️ MUXIM</option>
+            <option value="📢 DIQQAT: ">📢 DIQQAT</option>
+            <option value="ℹ️ MA'LUMOT VA AXBOROT UCHUN: ">ℹ️ MA'LUMOT VA AXBOROT UCHUN</option>
+            <option value="🆕 YANGILIK: ">🆕 YANGILIK</option>
+        </select>
+
+        <div class="format-bar" style="display:flex; gap:10px; margin-bottom:10px; background:rgba(255,255,255,0.05); padding:8px; border-radius:10px; border:1px solid var(--border);">
+            <button class="format-btn" onclick="formatText('b')" style="background:transparent; border:1px solid var(--border); color:white; padding:5px 15px; border-radius:6px; cursor:pointer;"><b>B</b></button>
+            <button class="format-btn" onclick="formatText('i')" style="background:transparent; border:1px solid var(--border); color:white; padding:5px 15px; border-radius:6px; cursor:pointer;"><i>I</i></button>
+            <button class="format-btn" onclick="formatText('u')" style="background:transparent; border:1px solid var(--border); color:white; padding:5px 15px; border-radius:6px; cursor:pointer;"><u>U</u></button>
+        </div>
+        <textarea id="task-text" rows="8" placeholder="Topshiriq mazmunini yozing..."></textarea>
         
         <div style="display: flex; gap: 20px;">
             <div style="flex:1">
@@ -187,8 +202,12 @@
     </div>
 </div>
 
+<!-- TASK LIST VIEW -->
 <div id="task-list-view" class="card">
-    <div class="card-title">📋 TOPSHIRIKLAR RO'YXATI</div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div class="card-title" style="margin-bottom:0;">📋 TOPSHIRIKLAR RO'YXATI</div>
+        <input type="text" id="task-search" placeholder="🔍 Qidirish..." style="width:250px; margin-bottom:0; padding:8px 15px; background:rgba(255,255,255,0.05);">
+    </div>
     <table class="task-list-table">
         <thead>
             <tr>
@@ -226,6 +245,10 @@
 
 <script>
     let currentData = { topics: [] };
+    let editMode = false;
+    let editTaskId = null;
+
+    document.getElementById('task-search').addEventListener('input', renderTasks);
 
     function switchView(view) {
         document.getElementById('submit-view').style.display = view === 'submit' ? 'grid' : 'none';
@@ -236,6 +259,19 @@
         if(view === 'submit') document.querySelectorAll('.tab')[0].classList.add('active');
         if(view === 'list') { document.querySelectorAll('.tab')[1].classList.add('active'); renderTasks(); }
         if(view === 'stats') { document.querySelectorAll('.tab')[2].classList.add('active'); renderStats(); }
+    }
+
+    function formatText(tag) {
+        const textarea = document.getElementById('task-text');
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const text = textarea.value;
+        const selected = text.substring(start, end);
+        const before = text.substring(0, start);
+        const after = text.substring(end);
+        
+        textarea.value = before + `<${tag}>` + selected + `</${tag}>` + after;
+        textarea.focus();
     }
 
     async function init() {
@@ -251,16 +287,53 @@
     async function renderTasks() {
         const res = await fetch('/api/data');
         const data = await res.json();
+        const searchQ = document.getElementById('task-search').value.toLowerCase();
+        
         const body = document.getElementById('task-table-body');
-        body.innerHTML = data.tasks.map(t => `
+        const filteredTasks = data.tasks.filter(t => t.text.toLowerCase().includes(searchQ) || t.custom_id.toLowerCase().includes(searchQ));
+        
+        body.innerHTML = filteredTasks.map(t => `
             <tr>
                 <td style="font-weight:bold">${t.emoji_id || t.custom_id}</td>
                 <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.text}</td>
                 <td>${t.deadline}</td>
                 <td><span class="status-badge" style="background:rgba(16,185,129,0.2); color:var(--success)">YUBORILDI</span></td>
-                <td><button class="btn-action">✏️</button><button class="btn-action btn-delete" onclick="deleteTask('${t.custom_id}')">🗑</button></td>
+                <td>
+                    <button class="btn-action" onclick="prepareEdit('${t.custom_id}')">✏️</button>
+                    <button class="btn-action btn-delete" onclick="deleteTask('${t.custom_id}')">🗑</button>
+                </td>
             </tr>
         `).join('');
+    }
+
+    async function prepareEdit(customId) {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        const task = data.tasks.find(t => t.custom_id === customId);
+        if(!task) return;
+
+        editMode = true;
+        editTaskId = customId;
+        
+        document.getElementById('task-text').value = task.text;
+        const [d, t] = task.deadline.split(' ');
+        document.getElementById('task-date').value = d;
+        document.getElementById('task-time').value = t.substring(0,5);
+        
+        switchView('submit');
+        const btn = document.querySelector('.btn-submit');
+        btn.innerHTML = "💾 O'ZGARTIRISHNI SAQLASH";
+        btn.style.background = "#f59e0b";
+    }
+
+    async function renderStats() {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        const body = document.getElementById('stats-table-body');
+        body.innerHTML = Object.keys(data.stats).map(h => {
+            const s = data.stats[h];
+            return `<tr><td style="font-weight:bold">${h}</td><td>${s.total}</td><td><span class="status-badge" style="background:rgba(59,130,246,0.1); color:var(--primary)">${s.seen}</span></td><td><span class="status-badge" style="background:rgba(16,185,129,0.1); color:var(--success)">${s.onTime}</span></td><td><span class="status-badge" style="background:rgba(239,68,68,0.1); color:var(--danger)">${s.late}</span></td></tr>`;
+        }).join('');
     }
 
     async function renderStats() {
@@ -280,21 +353,42 @@
     }
 
     async function submitTask() {
-        const text = document.getElementById('task-text').value;
+        const prefix = document.getElementById('task-prefix').value;
+        const rawText = document.getElementById('task-text').value;
+        const text = prefix + rawText;
+        
         const date = document.getElementById('task-date').value;
         const time = document.getElementById('task-time').value;
         const condition = document.getElementById('task-condition').value;
         const selectedTopics = Array.from(document.querySelectorAll('.topic-checkbox:checked')).map(cb => cb.value);
-        if(selectedTopics.length === 0) return alert("Kamida bitta bo'limni tanlang!");
-        // Get selected execution types
         const selectedExecTypes = Array.from(document.querySelectorAll('.exec-type:checked')).map(cb => cb.value);
 
-        const res = await fetch('/api/create', { method: 'POST', body: JSON.stringify({ text, date, time, is_exec_required: condition === 'action', topics: selectedTopics, exec_types: selectedExecTypes.length > 0 ? selectedExecTypes : ["Ko'rsatilmagan"] }) });
+        if(!text) return alert("Matinni kiriting!");
+        
+        const endpoint = editMode ? '/api/edit' : '/api/create';
+        const payload = { 
+            text, date, time, 
+            is_exec_required: condition === 'action', 
+            topics: selectedTopics, 
+            exec_types: selectedExecTypes.length > 0 ? selectedExecTypes : ["Ko'rsatilmagan"] 
+        };
+        if(editMode) payload.custom_id = editTaskId;
+
+        const res = await fetch(endpoint, { method: 'POST', body: JSON.stringify(payload) });
         const data = await res.json();
+        
         const toast = document.getElementById('success-toast');
-        toast.innerText = `🚀 Rahmat! Xabaringiz [${data.topic_name}]ga muvaffaqiyatli yuborildi.`;
+        toast.innerText = editMode ? `✅ Topshiriq tahrirlandi!` : `🚀 Rahmat! Xabaringiz [${data.topic_name}]ga muvaffaqiyatli yuborildi.`;
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 4000);
+
+        // Reset Form
+        document.getElementById('task-text').value = "";
+        editMode = false;
+        editTaskId = null;
+        const btn = document.querySelector('.btn-submit');
+        btn.innerHTML = "🚀 TOPSHIRIQNI YUBORISH";
+        btn.style.background = "var(--primary)";
     }
 </script>
 </body>

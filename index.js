@@ -43,6 +43,7 @@ function loadDb() {
         ];
     }
 }
+
 function saveDb() { fs.writeFileSync('./supervisor_db.json', JSON.stringify(db, null, 2)); }
 loadDb();
 
@@ -83,9 +84,10 @@ const server = http.createServer(async (req, res) => {
         req.on('data', c => body += c.toString());
         req.on('end', async () => {
             const data = JSON.parse(body);
+            const translatedText = transliterate(data.text);
             const tasksToEdit = db.tasks.filter(t => t.custom_id === data.custom_id);
             for (const task of tasksToEdit) {
-                task.text = data.text;
+                task.text = translatedText;
                 task.deadline = `${data.date} ${data.time}:00`;
                 task.is_exec_required = data.is_exec_required;
                 const txt = `✏️ <b>TAHRIRLANDI (ID: ${task.custom_id})</b>\n🛠 Ijro turi: <b>${data.exec_types?.join(', ') || 'Ma\'lum qilinmagan'}</b>\n📢 <b>YANGI TOPSHIRIQ:</b>\n📝 <i>${task.text}</i>\n📅 Muddat: <b>${data.date} ${data.time}</b>\n\n#topshiriq_nazorati`;
@@ -112,10 +114,10 @@ const server = http.createServer(async (req, res) => {
             const task = db.tasks.find(t => t.custom_id === data.custom_id || t.id == data.id);
             if (task) {
                 try {
-                    await bot.telegram.deleteMessage(GROUP_ID, task.msg_id);
-                    await bot.telegram.deleteMessage(GROUP_ID, task.monitoring_msg_id);
+                    await bot.telegram.deleteMessage(GROUP_ID, task.msg_id).catch(() => {});
+                    await bot.telegram.deleteMessage(GROUP_ID, task.monitoring_msg_id).catch(() => {});
                 } catch (e) {}
-                db.tasks = db.tasks.filter(t => t.id !== task.id);
+                db.tasks = db.tasks.filter(t => t.custom_id !== data.custom_id && t.id != data.id);
                 saveDb();
             }
             res.writeHead(200); res.end('DELETED');
