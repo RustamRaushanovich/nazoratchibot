@@ -2,512 +2,218 @@
 <html lang="uz">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SUPERVISOR AI | CONTROL CENTER</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SUPERVISOR AI | IJRO NAZORATI</title>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
             --primary: #3b82f6;
-            --primary-glow: rgba(59, 130, 246, 0.5);
             --bg: #0f172a;
-            --card: rgba(30, 41, 59, 0.7);
-            --border: rgba(255, 255, 255, 0.1);
-            --text: #f1f5f9;
+            --card: #1e293b;
+            --text: #f8fafc;
             --text-dim: #94a3b8;
             --success: #10b981;
             --danger: #ef4444;
+            --border: rgba(255,255,255,0.05);
         }
 
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', sans-serif; }
+        * { margin:0; padding:0; box-sizing: border-box; font-family: 'Public Sans', sans-serif; }
+        body { background: var(--bg); color: var(--text); padding: 20px; }
+
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+        .logo { font-size: 24px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
         
-        body { 
-            background: var(--bg); 
-            color: var(--text); 
-            min-height: 100vh;
-            overflow-x: hidden;
-            background-image: radial-gradient(circle at 50% -20%, #1e293b 0%, #0f172a 100%);
-        }
+        .nav-tabs { display: flex; background: var(--card); padding: 5px; border-radius: 12px; gap: 5px; }
+        .tab { padding: 10px 25px; border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--text-dim); transition: 0.3s; }
+        .tab.active { background: var(--primary); color: white; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
 
-        .app-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-            padding-bottom: 100px; /* Space for mobile nav */
-        }
+        .main-grid { display: grid; grid-template-columns: 1.5fr 1fr; gap: 20px; }
+        .card { background: var(--card); border-radius: 20px; padding: 25px; border: 1px solid var(--border); }
+        .card-title { font-size: 14px; font-weight: 700; color: var(--text-dim); margin-bottom: 20px; display: flex; align-items: center; gap: 10px; text-transform: uppercase; }
 
-        /* HEADER */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 30px;
-            padding: 10px 0;
-        }
+        label { display: block; font-size: 13px; color: var(--text-dim); margin-bottom: 8px; font-weight: 600; }
+        textarea, input, select { width: 100%; background: #0f172a; border: 1px solid var(--border); border-radius: 10px; padding: 12px; color: white; outline: none; margin-bottom: 20px; }
+        textarea:focus { border-color: var(--primary); }
 
-        .logo {
-            font-size: 20px;
-            font-weight: 800;
-            letter-spacing: -0.5px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+        /* HUDUDLAR & BO'LIMLAR GRID */
+        .selection-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; max-height: 250px; overflow-y: auto; padding-right: 10px; }
+        .grid-item { background: #151f32; padding: 12px; border-radius: 10px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 13px; cursor: pointer; transition: 0.2s; }
+        .grid-item:hover { border-color: var(--primary); }
+        .grid-item input { width: 18px; height: 18px; margin: 0; }
 
-        .logo span { color: var(--primary); }
+        .btn-submit { width: 100%; background: var(--primary); color: white; border: none; padding: 18px; border-radius: 15px; font-weight: 800; font-size: 16px; cursor: pointer; transition: 0.3s; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .btn-submit:hover { transform: translateY(-3px); box-shadow: 0 10px 25px rgba(59,130,246,0.4); }
 
-        /* NAV - RESPONSIBLE */
-        .main-nav {
-            display: flex;
-            gap: 8px;
-            background: var(--card);
-            padding: 5px;
-            border-radius: 14px;
-            border: 1px solid var(--border);
-            backdrop-filter: blur(10px);
-        }
+        /* SUCCESS TOAST */
+        #success-toast { position: fixed; bottom: 30px; right: 30px; background: var(--success); color: white; padding: 15px 30px; border-radius: 12px; display: none; transform: translateY(100px); transition: 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 1000; box-shadow: 0 10px 30px rgba(16,185,129,0.3); }
+        #success-toast.show { display: block; transform: translateY(0); }
 
-        .nav-btn {
-            padding: 10px 20px;
-            border-radius: 10px;
-            color: var(--text-dim);
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            border: none;
-            background: transparent;
-        }
-
-        .nav-btn.active {
-            background: var(--primary);
-            color: white;
-            box-shadow: 0 4px 12px var(--primary-glow);
-        }
-
-        /* CARD STYLE */
-        .glass-card {
-            background: var(--card);
-            border-radius: 20px;
-            border: 1px solid var(--border);
-            padding: 25px;
-            backdrop-filter: blur(20px);
-            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
-            margin-bottom: 20px;
-        }
-
-        .view { display: none; animation: slideUp 0.3s ease-out; }
-        .view.active { display: block; }
-
-        @keyframes slideUp {
-            from { opacity: 0; transform: translateY(15px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* FORM GRID */
-        .form-grid {
-            display: grid;
-            grid-template-columns: 3fr 2fr;
-            gap: 25px;
-        }
-
-        .input-group { margin-bottom: 20px; }
-        label { display: block; color: var(--text-dim); font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-        
-        input, textarea, select {
-            width: 100%;
-            background: rgba(15, 23, 42, 0.5);
-            border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px;
-            color: white;
-            font-size: 15px;
-            transition: border 0.3s;
-        }
-
-        input:focus, textarea:focus, select:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px var(--primary-glow);
-        }
-
-        .grid-check {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            padding-right: 5px;
-        }
-
-        .check-pill {
-            background: rgba(255,255,255,0.05);
-            border: 1px solid var(--border);
-            padding: 12px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            cursor: pointer;
-            font-size: 13px;
-        }
-
-        .check-pill input { width: 18px; height: 18px; }
-
-        .btn-main {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 18px;
-            border-radius: 16px;
-            font-weight: 800;
-            font-size: 16px;
-            cursor: pointer;
-            width: 100%;
-            transition: transform 0.2s, box-shadow 0.2s;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .btn-main:active { transform: scale(0.98); }
-
-        /* LIST VIEW */
-        .task-list {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
-            gap: 20px;
-        }
-
-        .task-card {
-            background: var(--card);
-            border-radius: 18px;
-            border: 1px solid var(--border);
-            padding: 20px;
-            position: relative;
-        }
-
-        .task-id {
-            background: var(--primary);
-            color: white;
-            padding: 4px 10px;
-            border-radius: 6px;
-            font-size: 11px;
-            font-weight: 800;
-        }
-
-        .progress-container { margin-top: 15px; }
-        .progress-label { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 5px; }
-        .progress-bar { height: 6px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; }
-        .progress-fill { height: 100%; transition: width 0.5s; background: var(--primary); }
-
-        /* MOBILE BOTTOM NAV */
-        .bottom-nav {
-            position: fixed;
-            bottom: 20px;
-            left: 20px;
-            right: 20px;
-            background: rgba(30, 41, 59, 0.95);
-            backdrop-filter: blur(20px);
-            border: 1px solid var(--border);
-            border-radius: 24px;
-            padding: 10px;
-            display: none;
-            justify-content: space-around;
-            z-index: 1000;
-            box-shadow: 0 -10px 40px rgba(0,0,0,0.5);
-        }
-
-        .b-nav-item {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            color: var(--text-dim);
-            font-size: 10px;
-            font-weight: 700;
-            gap: 5px;
-            padding: 10px;
-            border-radius: 15px;
-        }
-
-        .b-nav-item.active { color: var(--primary); }
-
-        /* RESPONSIVE */
-        @media (max-width: 768px) {
-            .app-container { padding: 15px; }
-            .main-nav { display: none; }
-            .bottom-nav { display: flex; }
-            .form-grid { grid-template-columns: 1fr; }
-            .grid-check { grid-template-columns: 1fr; }
-            header { justify-content: center; }
-            .task-list { grid-template-columns: 1fr; }
-        }
-
-        /* TABLE */
-        .stats-wrap { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; min-width: 600px; }
-        th { text-align: left; padding: 15px; color: var(--text-dim); font-size: 12px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid var(--border); }
-        td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; }
-        .badge { padding: 4px 8px; border-radius: 6px; font-size: 12px; font-weight: 700; }
-        .bg-success { background: rgba(16, 185, 129, 0.2); color: var(--success); }
-        .bg-danger { background: rgba(239, 68, 68, 0.2); color: var(--danger); }
+        /* TASK LIST */
+        #task-list-view { display: none; }
+        .task-list-table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .task-list-table th { text-align: left; padding: 15px; color: var(--text-dim); font-size: 12px; border-bottom: 1px solid var(--border); }
+        .task-list-table td { padding: 15px; border-bottom: 1px solid var(--border); font-size: 14px; }
+        .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; }
+        .btn-action { background: transparent; border: 1px solid var(--border); color: white; padding: 5px 10px; border-radius: 6px; cursor: pointer; margin-right: 5px; }
+        .btn-delete { color: var(--danger); border-color: var(--danger); }
     </style>
 </head>
 <body>
 
-<div class="app-container">
-    <header>
-        <div class="logo">🚀 SUPERVISOR <span>AI</span></div>
-        <nav class="main-nav">
-            <button class="nav-btn active" onclick="switchTab('create')">TOPSHIRIQ</button>
-            <button class="nav-btn" onclick="switchTab('list')">RO'YXAT</button>
-            <button class="nav-btn" onclick="switchTab('stats')">STATISTIKA</button>
-        </nav>
-    </header>
+<div id="success-toast">🚀 Раҳмат! Хабарингиз [Topic]га муваффақиятли юборилди.</div>
 
-    <!-- CREATE VIEW -->
-    <div id="view-create" class="view active">
-        <div class="glass-card">
-            <div class="form-grid">
-                <div>
-                    <div class="input-group">
-                        <label>📝 TOPSHIRIQ MATNI</label>
-                        <textarea id="taskText" rows="6" placeholder="Batafsil ma'lumot kiriting..."></textarea>
-                    </div>
-                    <div class="input-group" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                        <div>
-                            <label>📅 MUDDAT (SANA)</label>
-                            <input type="date" id="taskDate">
-                        </div>
-                        <div>
-                            <label>🕒 VAQT</label>
-                            <input type="time" id="taskTime">
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>📎 ILOVALAR (FAYLLAR)</label>
-                        <input type="file" id="taskFiles" multiple style="padding: 10px;">
-                    </div>
-                </div>
-                <div>
-                    <div class="input-group">
-                        <label>👤 MAS'UL RAHBAR</label>
-                        <select id="creatorId">
-                            <option value="02">Rahbar (RT)</option>
-                            <option value="01">D. Kasimova</option>
-                            <option value="03">Abrorjon Azimov</option>
-                            <option value="04">Dilshodjon Azamov</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
-                        <label>📂 BO'LIMLARNI TANLANG</label>
-                        <div id="topicGrid" class="grid-check">
-                            <!-- Populated by JS -->
-                        </div>
-                    </div>
-                    <div class="input-group">
-                        <label>⚙️ IJRO SHARTI</label>
-                        <select id="isExecRequired">
-                            <option value="no">Faqat tishish (INFO)</option>
-                            <option value="yes">Ijro talab etiladi (ACTION)</option>
-                        </select>
-                    </div>
-                </div>
+<div class="header">
+    <div class="logo">🚀 SUPERVISOR <span>AI</span></div>
+    
+    <div style="display:flex; align-items:center; gap:15px; background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 12px; border: 1px solid var(--border);">
+        <span style="font-size:11px; color:var(--text-dim); font-weight:700;">GET THE APP:</span>
+        <div class="tab" style="padding:5px 12px; font-size:12px;">💻 DESKTOP</div>
+        <div class="tab" style="padding:5px 12px; font-size:12px;">📱 MOBILE</div>
+    </div>
+
+    <div class="nav-tabs">
+        <div class="tab active" onclick="switchView('submit')">TOPSHIRIQ</div>
+        <div class="tab" onclick="switchView('list')">RO'YXAT</div>
+        <div class="tab" id="stats-tab">STATISTIKA</div>
+    </div>
+</div>
+
+<div id="submit-view" class="main-grid">
+    <!-- LEFT PANEL: CONTENT -->
+    <div class="card">
+        <div class="card-title">📝 TOPSHIRIQ MATNI</div>
+        <textarea id="task-text" rows="8" placeholder="Топшириқ мазмунини ёзинг..."></textarea>
+        
+        <div style="display: flex; gap: 20px;">
+            <div style="flex:1">
+                <label>📅 MUDDAT (SANA)</label>
+                <input type="date" id="task-date">
             </div>
-            <button class="btn-main" onclick="submitTask()">🚀 TOPSHIRIQNI YUBORISH</button>
+            <div style="flex:1">
+                <label>🕒 VAQT</label>
+                <input type="time" id="task-time">
+            </div>
         </div>
+
+        <label>📎 ILOVALAR (FAYLLAR)</label>
+        <input type="file" id="task-files" multiple>
+        
+        <button class="btn-submit" onclick="submitTask()">🚀 TOPSHIRIQNI YUBORISH</button>
     </div>
 
-    <!-- LIST VIEW -->
-    <div id="view-list" class="view">
-        <div class="task-list" id="taskList">
-            <!-- Populated by JS -->
-        </div>
-    </div>
+    <!-- RIGHT PANEL: SETTINGS -->
+    <div style="display: flex; flex-direction: column; gap: 20px;">
+        <div class="card">
+            <div class="card-title">👤 MAS'UL RAHBAR</div>
+            <select id="task-leader">
+                <option value="D. Kasimova">D. Kasimova</option>
+                <option value="A. Ahmedov">A. Ahmedov</option>
+            </select>
 
-    <!-- STATS VIEW -->
-    <div id="view-stats" class="view">
-        <div class="glass-card stats-wrap">
-            <table id="statsTable">
-                <thead>
-                    <tr>
-                        <th>Hudud</th>
-                        <th>Jami</th>
-                        <th>Vaqtida</th>
-                        <th>Kech</th>
-                        <th>Reyting</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
+            <div class="card-title">📂 BO'LIMLAR / HUDUDLAR</div>
+            <div class="selection-grid" id="hududlar-container">
+                <!-- Hududlar dynamically rendered -->
+                <div class="grid-item"><span>Farg'ona shahri</span> <input type="checkbox" checked></div>
+                <div class="grid-item"><span>Marg'ilon shahri</span> <input type="checkbox" checked></div>
+                <div class="grid-item"><span>Quva tumani</span> <input type="checkbox" checked></div>
+                <div class="grid-item"><span>O'zbekiston tumani</span> <input type="checkbox" checked></div>
+                <div class="grid-item"><span>Beshariq tumani</span> <input type="checkbox" checked></div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-title">⚙️ IJRO SHARTI</div>
+            <select id="task-condition">
+                <option value="info">Фақат танишиш (INFO)</option>
+                <option value="action">Ижро талаб этилади (ACTION)</option>
+            </select>
+
+            <label>📊 JAVOB TURI</label>
+            <div class="selection-grid" style="grid-template-columns: 1fr;">
+                <div class="grid-item"><span>📩 Telegram орқали (Тезкор)</span> <input type="checkbox"></div>
+                <div class="grid-item"><span>📄 Word / PDF ҳужжат</span> <input type="checkbox"></div>
+                <div class="grid-item"><span>📊 Excel жадвал</span> <input type="checkbox"></div>
+                <div class="grid-item"><span>🖼 Фото тасдиқ (Расм)</span> <input type="checkbox"></div>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- MOBILE BOTTOM NAV -->
-<div class="bottom-nav">
-    <div class="b-nav-item active" onclick="switchTab('create')">
-        <svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
-        <span>YANGI</span>
-    </div>
-    <div class="b-nav-item" onclick="switchTab('list')">
-        <svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M4 14h4v-4H4v4zm0 5h4v-4H4v4zM4 9h4V5H4v4zm5 5h12v-4H9v4zm0 5h12v-4H9v4zM9 5v4h12V5H9z"/></svg>
-        <span>RO'YXAT</span>
-    </div>
-    <div class="b-nav-item" onclick="switchTab('stats')">
-        <svg fill="currentColor" width="24" height="24" viewBox="0 0 24 24"><path d="M10 20h4V4h-4v16zm-6 0h4v-8H4v8zM16 9v11h4V9h-4z"/></svg>
-        <span>REYTING</span>
-    </div>
+<div id="task-list-view" class="card">
+    <div class="card-title">📋 TOPSHIRIKLAR RO'YXATI</div>
+    <table class="task-list-table">
+        <thead>
+            <tr>
+                <th>🆔 ID</th>
+                <th>📝 TOPSHIRIQ</th>
+                <th>📅 MUDDAT</th>
+                <th>⚙️ STATUS</th>
+                <th>🛠 AMALLAR</th>
+            </tr>
+        </thead>
+        <tbody id="task-table-body">
+            <!-- Tasks will appear here -->
+        </tbody>
+    </table>
 </div>
 
 <script>
-    const tg = window.Telegram?.WebApp;
-    if (tg) {
-        tg.ready();
-        tg.expand();
-        tg.enableClosingConfirmation();
+    function switchView(view) {
+        document.getElementById('submit-view').style.display = view === 'submit' ? 'grid' : 'none';
+        document.getElementById('task-list-view').style.display = view === 'list' ? 'block' : 'none';
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        const activeTabIdx = view === 'submit' ? 0 : 1;
+        document.querySelectorAll('.tab')[activeTabIdx].classList.add('active');
+        if(view === 'list') renderTasks();
     }
 
-    let rawData = { tasks: [], topics: [], districts: [], stats: {} };
-
-    function switchTab(tabId) {
-        document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-        document.querySelectorAll('.nav-btn, .b-nav-item').forEach(b => b.classList.remove('active'));
-        
-        document.getElementById(`view-${tabId}`).classList.add('active');
-        
-        // Update both Navs
-        const navBtns = document.querySelectorAll('.nav-btn');
-        const bNavItems = document.querySelectorAll('.b-nav-item');
-        
-        if (tabId === 'create') { navBtns[0].classList.add('active'); bNavItems[0].classList.add('active'); }
-        if (tabId === 'list') { navBtns[1].classList.add('active'); bNavItems[1].classList.add('active'); renderList(); }
-        if (tabId === 'stats') { navBtns[2].classList.add('active'); bNavItems[2].classList.add('active'); renderStats(); }
-
-        if (tg) tg.HapticFeedback.selectionChanged();
+    async function renderTasks() {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        const body = document.getElementById('task-table-body');
+        body.innerHTML = data.tasks.map(t => `
+            <tr>
+                <td style="font-weight:bold">${t.emoji_id || t.custom_id}</td>
+                <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.text}</td>
+                <td>${t.deadline}</td>
+                <td><span class="status-badge" style="background:rgba(16,185,129,0.2); color:var(--success)">YUBORILDI</span></td>
+                <td>
+                    <button class="btn-action">✏️</button>
+                    <button class="btn-action btn-delete" onclick="deleteTask('${t.custom_id}')">🗑</button>
+                </td>
+            </tr>
+        `).join('');
     }
 
-    async function loadData() {
-        try {
-            const res = await fetch('/api/data?' + Date.now());
-            rawData = await res.json();
-            
-            // Populate Topics
-            const grid = document.getElementById('topicGrid');
-            grid.innerHTML = rawData.topics.map(t => `
-                <label class="check-pill">
-                    <span>${t.name}</span>
-                    <input type="checkbox" name="topic" value="${t.id}">
-                </label>
-            `).join('');
-
-        } catch (e) { console.error("Data Load Error:", e); }
-    }
-
-    function renderList() {
-        const list = document.getElementById('taskList');
-        list.innerHTML = rawData.tasks.slice().reverse().map(t => {
-            const total = rawData.districts.length;
-            const seen = t.seen_regions?.length || 0;
-            const done = t.completed_regions?.length || 0;
-            const seenPerc = (seen/total)*100;
-            const donePerc = (done/total)*100;
-
-            return `
-                <div class="task-card">
-                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
-                        <span class="task-id">${t.custom_id}</span>
-                        <span style="font-size:11px; color:var(--text-dim);">⏱ ${t.deadline}</span>
-                    </div>
-                    <div style="font-size:14px; line-height:1.5; margin-bottom:15px; color:#fff;">${t.text.substring(0, 150)}${t.text.length > 150 ? '...' : ''}</div>
-                    
-                    <div class="progress-container">
-                        <div class="progress-label"><span>📥 Tanishuv</span> <span>${seen}/${total}</span></div>
-                        <div class="progress-bar"><div class="progress-fill" style="width:${seenPerc}%; background:#38bdf8;"></div></div>
-                    </div>
-                    ${t.is_exec_required ? `
-                        <div class="progress-container">
-                            <div class="progress-label"><span>✅ Ijro</span> <span>${done}/${total}</span></div>
-                            <div class="progress-bar"><div class="progress-fill" style="width:${donePerc}%; background:var(--success);"></div></div>
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-        }).join('');
-    }
-
-    function renderStats() {
-        const tbody = document.querySelector('#statsTable tbody');
-        tbody.innerHTML = '';
-        const sorted = rawData.districts.sort((a,b) => {
-            const sA = rawData.stats[a];
-            const sB = rawData.stats[b];
-            return (sB.onTime / (sB.total || 1)) - (sA.onTime / (sA.total || 1));
-        });
-
-        sorted.forEach(h => {
-            const s = rawData.stats[h];
-            const perc = Math.round((s.onTime / (s.total || 1)) * 100);
-            const color = perc > 85 ? 'bg-success' : (perc > 60 ? 'badge' : 'bg-danger');
-            
-            tbody.innerHTML += `
-                <tr>
-                    <td><b>${h}</b></td>
-                    <td>${s.total}</td>
-                    <td style="color:var(--success)">${s.onTime}</td>
-                    <td style="color:var(--danger)">${s.late}</td>
-                    <td><span class="badge ${color}">${perc}%</span></td>
-                </tr>
-            `;
-        });
+    async function deleteTask(cId) {
+        if(!confirm("Haqiqatan ham o'chirmoqchimisiz? Telegramdan ham o'chiriladi.")) return;
+        await fetch('/api/delete', { method: 'POST', body: JSON.stringify({ custom_id: cId }) });
+        renderTasks();
     }
 
     async function submitTask() {
-        const topics = Array.from(document.querySelectorAll('input[name="topic"]:checked')).map(i => i.value);
-        if (topics.length === 0) return alert("Kamida битта бўлимни танланг!");
+        const text = document.getElementById('task-text').value;
+        const date = document.getElementById('task-date').value;
+        const time = document.getElementById('task-time').value;
+        const condition = document.getElementById('task-condition').value;
+        const leader = document.getElementById('task-leader').value;
 
-        const payload = {
-            text: document.getElementById('taskText').value,
-            creator_id: document.getElementById('creatorId').value,
-            date: document.getElementById('taskDate').value,
-            time: document.getElementById('taskTime').value,
-            is_exec_required: document.getElementById('isExecRequired').value === 'yes',
-            topics: topics,
-            files: []
-        };
-
-        if (tg) tg.HapticFeedback.impactOccurred('medium');
-
-        const fileInput = document.getElementById('taskFiles');
-        if (fileInput.files.length > 0) {
-            let processed = 0;
-            for (let i = 0; i < fileInput.files.length; i++) {
-                const reader = new FileReader();
-                const currentFile = fileInput.files[i];
-                reader.onload = async () => {
-                    payload.files.push({ name: currentFile.name, data: reader.result });
-                    processed++;
-                    if (processed === fileInput.files.length) await send(payload);
-                };
-                reader.readAsDataURL(currentFile);
-            }
-        } else {
-            await send(payload);
-        }
+        const res = await fetch('/api/create', {
+            method: 'POST',
+            body: JSON.stringify({
+                text, date, time, 
+                is_exec_required: condition === 'action',
+                topics: [8803], // Default TEZKOR topic or from select
+                exec_types: ["📩 Telegram"]
+            })
+        });
+        const data = await res.json();
+        
+        const toast = document.getElementById('success-toast');
+        toast.innerText = `🚀 Раҳмат! Хабарингиз [${data.topic_name}]га муваффақиятли юборилди.`;
+        toast.classList.add('show');
+        setTimeout(() => toast.classList.remove('show'), 4000);
     }
-
-    async function send(payload) {
-        const res = await fetch('/api/create', { method: 'POST', body: JSON.stringify(payload) });
-        if (res.ok) {
-            if (tg) tg.showAlert("🚀 Topshiriq muvaffaqiyatli yuborildi!");
-            else alert("Yuborildi!");
-            location.reload();
-        }
-    }
-
-    loadData();
 </script>
-
 </body>
 </html>

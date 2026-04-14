@@ -9,6 +9,13 @@ const PORT = process.env.PORT || 1001;
 const TOKEN = '8629827264:AAHnQ8LwpLO74NbLErGsd5ujk4xiRRRYEHw';
 const GROUP_ID = -1002262665652;
 
+const EMOJI_MAP = { '0': '0️⃣', '1': '1️⃣', '2': '2️⃣', '3': '3️⃣', '4': '4️⃣', '5': '5️⃣', '6': '6️⃣', '7': '7️⃣', '8': '8️⃣', '9': '9️⃣', '/': '/', '-': '➖' };
+function toEmojiId(id) { 
+    return "🆔 " + id.split('').map(char => EMOJI_MAP[char] || char).join('');
+}
+
+const DISTRICT_ADMINS = { 5807811746: "Dang‘ara tumani", 922449047: "Beshariq tumani", 5547706955: "Buvayda tumani", 8544693602: "So‘x tumani", 1969769846: "Rishton tumani", 341362677: "Yozyovon tumani", 6229419604: "Oltiariq tumani", 595501640: "Toshloq tumani", 503222829: "Qo‘shtepa tumani", 8145453879: "Bag‘dod tumani", 1894911241: "Furqat tumani", 6822495768: "Marg‘ilon shahri", 271593039: "O‘zbekiston tumani", 583173715: "Quvasoy shahri", 345359050: "Farg‘ona shahri", 1130890451: "Qo‘qon shahri", 309212107: "Quva tumani", 104416763: "Farg‘ona tumani", 7862384262: "Uchko‘prik tumani" };
+
 const HUDUD_KEYWORDS = ["Farg‘ona shahri", "Marg‘ilon shahri", "Beshariq tumani", "Bag‘dod tumani", "Uchko‘prik tumani", "Qo‘shtepa tumani", "Farg‘ona tumani", "O‘zbekiston tumani", "Dang‘ara tumani", "Rishton tumani", "So‘x tumani", "Toshloq tumani", "Oltiariq tumani", "Furqat tumani", "Buvayda tumani", "Quva tumani", "Qo‘qon shahri", "Quvasoy shahri", "Yozyovon tumani"];
 
 const TELEGRAM_TOPICS = [
@@ -103,18 +110,42 @@ const server = http.createServer(async (req, res) => {
         return;
     }
 
+    if (req.url.startsWith('/api/delete') && req.method === 'POST') {
+        let body = '';
+        req.on('data', c => body += c.toString());
+        req.on('end', async () => {
+            const data = JSON.parse(body);
+            const task = db.tasks.find(t => t.custom_id === data.custom_id || t.id == data.id);
+            if (task) {
+                try {
+                    await bot.telegram.deleteMessage(GROUP_ID, task.msg_id);
+                    await bot.telegram.deleteMessage(GROUP_ID, task.monitoring_msg_id);
+                } catch (e) {}
+                db.tasks = db.tasks.filter(t => t.id !== task.id);
+                saveDb();
+            }
+            res.writeHead(200); res.end('DELETED');
+        });
+        return;
+    }
+
     if (req.url.startsWith('/api/create') && req.method === 'POST') {
         let body = '';
         req.on('data', c => body += c.toString());
         req.on('end', async () => {
             const data = JSON.parse(body);
             const prefix = data.creator_id || "02";
-            const cId = `${prefix}/${String((db.tasks||[]).length + 1).padStart(5, '0')}`;
+            const rawId = `${prefix}/${String((db.tasks||[]).length + 1).padStart(5, '0')}`;
+            const emojiId = toEmojiId(rawId);
             
+            let lastTopicName = "";
             for (const tid of data.topics) {
+                const topic = TELEGRAM_TOPICS.find(tp => tp.id == tid);
+                lastTopicName = topic ? topic.name : "Noma'lum";
                 const task = { 
                     id: Date.now()+Math.random(), 
-                    custom_id: cId, 
+                    custom_id: rawId, 
+                    emoji_id: emojiId,
                     text: data.text, 
                     deadline: `${data.date} ${data.time}:00`, 
                     topic_id: tid, 
@@ -123,14 +154,12 @@ const server = http.createServer(async (req, res) => {
                     seen_regions: [] 
                 };
                 db.tasks.push(task);
-                const txt = `📌 <b>ID: ${cId}</b>\n🛠 Ijro turi: <b>${data.exec_types?.join(', ') || 'Ma\'lum qilinmagan'}</b>\n📢 <b>YANGI TOPSHIRIQ:</b>\n📝 <i>${task.text}</i>\n📅 Muddat: <b>${data.date} ${data.time}</b>\n\n#topshiriq_nazorati`;
+                const txt = `${emojiId}\n🛠 Ijro turi: <b>${data.exec_types?.join(', ') || 'Ma\'lum qilinmagan'}</b>\n📢 <b>YANGI TOPSHIRIQ:</b>\n📝 <i>${task.text}</i>\n📅 Muddat: <b>${data.date} ${data.time}</b>\n\n#topshiriq_nazorati`;
                 
                 try {
                     let firstMsg;
                     const threadId = parseInt(tid) === 1 ? undefined : parseInt(tid);
-                    const buttons = [Markup.button.callback("📥 Tanishdim", `seen_${task.id}`)];
-                    if (task.is_exec_required) buttons.push(Markup.button.callback("✅ Bajarildi", `done_${task.id}`));
-                    const keyboard = Markup.inlineKeyboard([buttons]);
+                    const keyboard = getTaskKeyboard(task);
 
                     if (data.files && data.files.length > 0) {
                         for (let i = 0; i < data.files.length; i++) {
@@ -143,14 +172,14 @@ const server = http.createServer(async (req, res) => {
                         firstMsg = await bot.telegram.sendMessage(GROUP_ID, txt, { parse_mode: 'HTML', message_thread_id: threadId, ...keyboard });
                     }
                     task.msg_id = firstMsg.message_id;
-                    const monTxt = `📊 <b>IJRO:</b> ${cId}\n\n` + HUDUD_KEYWORDS.map(h => `${h}: 🛑`).join('\n') + `\n🕒 Live: ${moment().format("HH:mm:ss")}`;
+                    const monTxt = `📊 <b>IJRO:</b> ${emojiId}\n\n` + HUDUD_KEYWORDS.map(h => `${h}: 🛑`).join('\n');
                     const mon = await bot.telegram.sendMessage(GROUP_ID, monTxt, { parse_mode: 'HTML', message_thread_id: threadId });
                     task.monitoring_msg_id = mon.message_id;
-                } catch (e) {
-                    console.error("BROADCAST ERROR:", e.message);
-                }
+                    updateMonitoring(task); // Final polish formatting
+                } catch (e) { console.error("BROADCAST ERROR:", e.message); }
             }
-            saveDb(); res.writeHead(200); res.end('OK');
+            saveDb(); res.writeHead(200, { 'Content-Type': 'application/json' }); 
+            res.end(JSON.stringify({ success: true, topic_name: lastTopicName }));
         });
         return;
     }
@@ -185,51 +214,75 @@ bot.command('admin', (ctx) => {
 
 bot.on('callback_query', async (ctx) => {
     const data = ctx.callbackQuery.data;
+    const userId = ctx.from.id;
+    const region = DISTRICT_ADMINS[userId];
+    if (!region) return ctx.answerCbQuery("Siz ro'yxatdan o'tmagansiz!");
+
     if (data.startsWith('seen_')) {
         const tId = parseFloat(data.split('_')[1]);
         const task = db.tasks.find(t => t.id === tId);
         if (!task) return ctx.answerCbQuery("Topshiriq topilmadi!");
-        const region = DISTRICT_ADMINS[ctx.from.id];
-        if (!region) return ctx.answerCbQuery("Siz ro'yxatdan o'tmagansiz!");
-        if (task.seen_regions.some(r => r.region === region)) return ctx.answerCbQuery("Siz allaqachon tanishdingiz!");
+        if (task.seen_regions.some(r => r.region === region)) return ctx.answerCbQuery("Siz allaqachon танишдингиз!");
+        
         task.seen_regions.push({ region, time: new Date() });
         saveDb();
         updateMonitoring(task);
-        ctx.answerCbQuery("Tanishganingiz qayd etildi!");
+        
+        // Update the button to green
+        try {
+            await ctx.editMessageReplyMarkup(getTaskKeyboard(task, userId).reply_markup);
+        } catch(e){}
+        
+        ctx.answerCbQuery("Танишганингиз қайд этилди! ✅");
     }
     if (data.startsWith('done_')) {
         const tId = parseFloat(data.split('_')[1]);
         const task = db.tasks.find(t => t.id === tId);
         if (!task) return ctx.answerCbQuery("Topshiriq topilmadi!");
-        const region = DISTRICT_ADMINS[ctx.from.id];
-        if (!region) return ctx.answerCbQuery("Siz ro'yxatdan o'tmagansiz!");
         if (task.completed_regions.some(r => r.region === region)) return ctx.answerCbQuery("Siz allaqachon bajargansiz!");
+        
         task.completed_regions.push({ region, time: new Date() });
         saveDb();
         updateMonitoring(task);
-        ctx.answerCbQuery("Ijro etilganingiz qayd etildi! Barakalla!");
+        ctx.answerCbQuery("Ижро этилганингиз қайд этилди! 🗂");
     }
 });
 
 const DISTRICT_ADMINS = { 5807811746: "Dang‘ara tumani", 922449047: "Beshariq tumani", 5547706955: "Buvayda tumani", 8544693602: "So‘x tumani", 1969769846: "Rishton tumani", 341362677: "Yozyovon tumani", 6229419604: "Oltiariq tumani", 595501640: "Toshloq tumani", 503222829: "Qo‘shtepa tumani", 8145453879: "Bag‘dod tumani", 1894911241: "Furqat tumani", 6822495768: "Marg‘ilon shahri", 271593039: "O‘zbekiston tumani", 583173715: "Quvasoy shahri", 345359050: "Farg‘ona shahri", 1130890451: "Qo‘qon shahri", 309212107: "Quva tumani", 104416763: "Farg‘ona tumani", 7862384262: "Uchko‘prik tumani" };
 
+function getTaskKeyboard(task, userId) {
+    const region = DISTRICT_ADMINS[userId];
+    const isSeen = region && task.seen_regions.some(r => r.region === region);
+    const seenBtn = Markup.button.callback(`${isSeen ? "🟢" : "🔴"} TANISHDIM`, `seen_${task.id}`);
+    const buttons = [seenBtn];
+    if (task.is_exec_required) buttons.push(Markup.button.callback("✅ Bajarildi", `done_${task.id}`));
+    return Markup.inlineKeyboard([buttons]);
+}
+
 async function updateMonitoring(task) {
     const isExec = task.is_exec_required;
-    const header = isExec ? "<code> № HUDUD              | TANISHDI | IJRO </code>\n" : "<code> № HUDUD              | TANISHDI </code>\n";
+    const header = isExec ? "<code> № HUDUD              | T | I </code>\n" : "<code> № HUDUD              | T </code>\n";
     
-    const text = `📊 <b>IJRO MONITORINGI:</b>\n📌 ID: <b>${task.custom_id}</b>\n\n` + header + HUDUD_KEYWORDS.map((h, i) => {
+    let text = `📊 <b>IJRO MONITORINGI:</b>\n${task.emoji_id}\n\n` + header;
+    text += HUDUD_KEYWORDS.map((h, i) => {
         const num = String(i + 1).padStart(2, ' ');
-        const paddedName = h.padEnd(18, ' '); // Padding to 18 chars for alignment
-        let seen = task.seen_regions.some(r => r.region === h) ? "📥" : "🛑";
+        const paddedName = h.padEnd(18, ' ');
+        const hasSeen = task.seen_regions.some(r => r.region === h);
+        const seenIcon = hasSeen ? "✅" : "❌";
+        
         if (isExec) {
-            let comp = task.completed_regions.some(r => r.region === h) ? "✅" : "🛑";
-            return `<code>${num}. ${paddedName}: ${seen} | ${comp}</code>`;
-        } else {
-            return `<code>${num}. ${paddedName}: ${seen}</code>`;
+            const hasExec = task.completed_regions.some(r => r.region === h);
+            const execIcon = hasExec ? "🗂" : "⛔";
+            return `<code>${num}. ${paddedName}: ${seenIcon} | ${execIcon}</code>`;
         }
-    }).join('\n') + `\n\n🕒 Live Update: ${moment().format("HH:mm:ss")}`;
-    const threadId = parseInt(task.topic_id) === 1 ? undefined : parseInt(task.topic_id);
-    try { await bot.telegram.editMessageText(GROUP_ID, task.monitoring_msg_id, null, text, { parse_mode: 'HTML' }); } catch (e) {}
+        return `<code>${num}. ${paddedName}: ${seenIcon}</code>`;
+    }).join('\n');
+    
+    text += `\n\n🕒 Live: ${moment().format("HH:mm:ss")}`;
+    
+    try { 
+        await bot.telegram.editMessageText(GROUP_ID, task.monitoring_msg_id, null, text, { parse_mode: 'HTML' }); 
+    } catch (e) {}
 }
 
 server.listen(PORT, () => console.log(`🚀 EXECUTIVE SERVER ONLINE ON PORT ${PORT}`));
