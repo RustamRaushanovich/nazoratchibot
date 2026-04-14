@@ -14,6 +14,15 @@ function toEmojiId(id) {
     return "🆔 " + id.split('').map(char => EMOJI_MAP[char] || char).join('');
 }
 
+function transliterate(text) {
+    const map = {
+        'А':'A','Б':'B','В':'V','Г':'G','Д':'D','Е':'E','Ё':'Yo','Ж':'J','З':'Z','И':'I','Й':'Y','К':'K','Л':'L','М':'M','Н':'N','О':'O','П':'P','Р':'R','С':'S','Т':'T','У':'U','Ф':'F','Х':'X','Ц':'Ts','Ч':'Ch','Ш':'Sh','Ъ':'\'','Ь':'','Э':'E','Ю':'Yu','Я':'Ya',
+        'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'yo','ж':'j','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'x','ц':'ts','ч':'ch','ш':'sh','ъ':'\'','ь':'','э':'e','ю':'yu','я':'ya',
+        'Ў':'O‘','ў':'o‘','Қ':'Q','қ':'q','Ғ':'G‘','ғ':'g‘','Ҳ':'H','ҳ':'h'
+    };
+    return text.split('').map(char => map[char] || char).join('');
+}
+
 const DISTRICT_ADMINS = { 5807811746: "Dang‘ara tumani", 922449047: "Beshariq tumani", 5547706955: "Buvayda tumani", 8544693602: "So‘x tumani", 1969769846: "Rishton tumani", 341362677: "Yozyovon tumani", 6229419604: "Oltiariq tumani", 595501640: "Toshloq tumani", 503222829: "Qo‘shtepa tumani", 8145453879: "Bag‘dod tumani", 1894911241: "Furqat tumani", 6822495768: "Marg‘ilon shahri", 271593039: "O‘zbekiston tumani", 583173715: "Quvasoy shahri", 345359050: "Farg‘ona shahri", 1130890451: "Qo‘qon shahri", 309212107: "Quva tumani", 104416763: "Farg‘ona tumani", 7862384262: "Uchko‘prik tumani" };
 
 const HUDUD_KEYWORDS = ["Farg‘ona shahri", "Marg‘ilon shahri", "Beshariq tumani", "Bag‘dod tumani", "Uchko‘prik tumani", "Qo‘shtepa tumani", "Farg‘ona tumani", "O‘zbekiston tumani", "Dang‘ara tumani", "Rishton tumani", "So‘x tumani", "Toshloq tumani", "Oltiariq tumani", "Furqat tumani", "Buvayda tumani", "Quva tumani", "Qo‘qon shahri", "Quvasoy shahri", "Yozyovon tumani"];
@@ -124,6 +133,8 @@ const server = http.createServer(async (req, res) => {
             const emojiId = toEmojiId(rawId);
             
             let lastTopicName = "";
+            const translatedText = transliterate(data.text);
+            
             for (const tid of data.topics) {
                 const topic = db.topics.find(tp => tp.id == tid);
                 lastTopicName = topic ? topic.name : "Noma'lum";
@@ -131,7 +142,7 @@ const server = http.createServer(async (req, res) => {
                     id: Date.now()+Math.random(), 
                     custom_id: rawId, 
                     emoji_id: emojiId,
-                    text: data.text, 
+                    text: translatedText, 
                     deadline: `${data.date} ${data.time}:00`, 
                     topic_id: tid, 
                     is_exec_required: data.is_exec_required,
@@ -208,7 +219,7 @@ bot.on('callback_query', async (ctx) => {
         const tId = parseFloat(data.split('_')[1]);
         const task = db.tasks.find(t => t.id === tId);
         if (!task) return ctx.answerCbQuery("Topshiriq topilmadi!");
-        if (task.seen_regions.some(r => r.region === region)) return ctx.answerCbQuery("Siz allaqachon танишдингиз!");
+        if (task.seen_regions.some(r => r.region === region)) return ctx.answerCbQuery("Siz allaqachon tanishdingiz!");
         
         task.seen_regions.push({ region, time: new Date() });
         saveDb();
@@ -219,7 +230,7 @@ bot.on('callback_query', async (ctx) => {
             await ctx.editMessageReplyMarkup(getTaskKeyboard(task, userId).reply_markup);
         } catch(e){}
         
-        ctx.answerCbQuery("Танишганингиз қайд этилди! ✅");
+        ctx.answerCbQuery("Tanishganingiz qayd etildi! ✅");
     }
     if (data.startsWith('done_')) {
         const tId = parseFloat(data.split('_')[1]);
@@ -230,7 +241,7 @@ bot.on('callback_query', async (ctx) => {
         task.completed_regions.push({ region, time: new Date() });
         saveDb();
         updateMonitoring(task);
-        ctx.answerCbQuery("Ижро этилганингиз қайд этилди! 🗂");
+        ctx.answerCbQuery("Ijro etilganingiz qayd etildi! 🗂");
     }
 });
 

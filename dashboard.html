@@ -105,7 +105,7 @@
 </head>
 <body>
 
-<div id="success-toast">🚀 Раҳмат! Хабарингиз [Topic]га муваффақиятли юборилди.</div>
+<div id="success-toast">🚀 Rahmat! Xabaringiz [Topic]ga muvaffaqiyatli yuborildi.</div>
 
 <div class="header">
     <div class="logo">🚀 SUPERVISOR <span>AI</span></div>
@@ -163,24 +163,24 @@
             <div class="card-title">📂 BO'LIMLAR / TOPICLAR</div>
             <div class="selection-grid" id="topics-container">
                 <!-- Topics will load here dynamically -->
-                <p style="color:var(--text-dim); font-size:12px;">Бўлимлар юкланмоқда...</p>
+                <p style="color:var(--text-dim); font-size:12px;">Bo'limlar yuklanmoqda...</p>
             </div>
         </div>
 
         <div class="card">
             <div class="card-title">⚙️ IJRO SHARTI</div>
             <select id="task-condition">
-                <option value="info">Фақат танишиш (INFO)</option>
-                <option value="action" selected>Ижро талаб этилади (ACTION)</option>
+                <option value="info">Faqat tanishish (INFO)</option>
+                <option value="action" selected>Ijro talab etiladi (ACTION)</option>
             </select>
 
             <label>📊 JAVOB TURI</label>
             <div class="selection-grid" style="grid-template-columns: 1fr;">
-                <div class="grid-item"><span>📩 Telegram орқали (Тезкор)</span> <input type="checkbox" class="exec-type" value="📩 Telegram"></div>
-                <div class="grid-item"><span>📄 Word ҳужжат</span> <input type="checkbox" class="exec-type" value="📄 Word"></div>
-                <div class="grid-item"><span>🧾 PDF ҳужжат</span> <input type="checkbox" class="exec-type" value="🧾 PDF"></div>
-                <div class="grid-item"><span>📊 Excel жадвал</span> <input type="checkbox" class="exec-type" value="📊 Excel"></div>
-                <div class="grid-item"><span>🏞 Фото тасдиқ (Расм)</span> <input type="checkbox" class="exec-type" value="🏞 Фото"></div>
+                <div class="grid-item"><span>📩 Telegram orqali (Tezkor)</span> <input type="checkbox" class="exec-type" value="📩 Telegram"></div>
+                <div class="grid-item"><span>📄 Word hujjat</span> <input type="checkbox" class="exec-type" value="📄 Word"></div>
+                <div class="grid-item"><span>🧾 PDF hujjat</span> <input type="checkbox" class="exec-type" value="🧾 PDF"></div>
+                <div class="grid-item"><span>📊 Excel jadval</span> <input type="checkbox" class="exec-type" value="📊 Excel"></div>
+                <div class="grid-item"><span>🏞 Foto tasdiq (Rasm)</span> <input type="checkbox" class="exec-type" value="🏞 Foto"></div>
                 <div class="grid-item"><span>🎞 Videorollik (Hisobot)</span> <input type="checkbox" class="exec-type" value="🎞 Video"></div>
             </div>
         </div>
@@ -285,22 +285,14 @@
         const time = document.getElementById('task-time').value;
         const condition = document.getElementById('task-condition').value;
         const selectedTopics = Array.from(document.querySelectorAll('.topic-checkbox:checked')).map(cb => cb.value);
-        if(selectedTopics.length === 0) return alert("Камида битта бўлимни танланг!");
+        if(selectedTopics.length === 0) return alert("Kamida bitta bo'limni tanlang!");
         // Get selected execution types
         const selectedExecTypes = Array.from(document.querySelectorAll('.exec-type:checked')).map(cb => cb.value);
 
-        const res = await fetch('/api/create', { 
-            method: 'POST', 
-            body: JSON.stringify({ 
-                text, date, time, 
-                is_exec_required: condition === 'action', 
-                topics: selectedTopics, 
-                exec_types: selectedExecTypes.length > 0 ? selectedExecTypes : ["Кўрсатилмаган"]
-            }) 
-        });
+        const res = await fetch('/api/create', { method: 'POST', body: JSON.stringify({ text, date, time, is_exec_required: condition === 'action', topics: selectedTopics, exec_types: selectedExecTypes.length > 0 ? selectedExecTypes : ["Ko'rsatilmagan"] }) });
         const data = await res.json();
         const toast = document.getElementById('success-toast');
-        toast.innerText = `🚀 Раҳмат! Хабарингиз [${data.topic_name}]га муваффақиятли юборилди.`;
+        toast.innerText = `🚀 Rahmat! Xabaringiz [${data.topic_name}]ga muvaffaqiyatli yuborildi.`;
         toast.classList.add('show');
         setTimeout(() => toast.classList.remove('show'), 4000);
     }
