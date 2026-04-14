@@ -90,25 +90,18 @@ const server = http.createServer(async (req, res) => {
             const tasksToEdit = db.tasks.filter(t => t.custom_id === data.custom_id);
             for (const task of tasksToEdit) {
                 task.text = translatedText;
-                task.deadline = `${data.date} ${data.time}:00`;
                 task.is_exec_required = data.is_exec_required;
                 
-                // APPLY MANUAL OVERRIDES IF PROVIDED
-                if (data.manual_seen) {
-                    task.seen_regions = data.manual_seen.map(r => ({ region: r, time: new Date() }));
-                }
-                if (data.manual_done) {
-                    task.completed_regions = data.manual_done.map(r => ({ region: r, time: new Date() }));
-                }
+                // APPLY MANUAL OVERRIDES
+                if (data.manual_seen) task.seen_regions = data.manual_seen.map(r => ({ region: r, time: new Date() }));
+                if (data.manual_done) task.completed_regions = data.manual_done.map(r => ({ region: r, time: new Date() }));
 
-                const txt = `✏️ <b>TAHRIRLANDI (ID: ${task.custom_id})</b>\n🛠 Ijro turi: <b>${data.exec_types?.join(', ') || 'Ma\'lum qilinmagan'}</b>\n📢 <b>YANGI TOPSHIRIQ:</b>\n📝 <i>${task.text}</i>\n📅 Muddat: <b>${data.date} ${data.time}</b>\n\n#topshiriq_nazorati`;
-                const buttons = [Markup.button.callback("📥 Tanishdim", `seen_${task.id}`)];
-                if (task.is_exec_required) buttons.push(Markup.button.callback("✅ Bajarildi", `done_${task.id}`));
-                const keyboard = Markup.inlineKeyboard([buttons]);
+                const txt = `✏️ <b>TAHRIRLANDI (${task.emoji_id})</b>\n⚙️ Ijro turi: <b>${data.exec_types?.join(', ') || 'Ma\'lum qilinmagan'}</b>\n📢 <b>YANGI TOPSHIRIQ:</b>\n📝 <i>${task.text}</i>\n📅 Muddat: <b>${data.date} ${data.time}</b>\n\n#topshiriq_nazorati`;
+                const keyboard = getTaskKeyboard(task); // Use universal keyboard logic
 
                 try {
                     await bot.telegram.editMessageText(GROUP_ID, task.msg_id, null, txt, { parse_mode: 'HTML', ...keyboard });
-                    updateMonitoring(task); // Refresh the monitoring report live!
+                    updateMonitoring(task);
                 } catch (e) { console.error("EDIT MSG ERROR:", e.message); }
             }
             saveDb(); res.writeHead(200); res.end('OK');
@@ -307,9 +300,12 @@ bot.on('forum_topic_edited', (ctx) => {
 });
 
 
-function getTaskKeyboard(task, userId) {
-    const region = DISTRICT_ADMINS[userId];
+function getTaskKeyboard(task, userId = null) {
+    const region = userId ? DISTRICT_ADMINS[userId] : null;
     const isSeen = region && task.seen_regions.some(r => r.region === region);
+    
+    // We use a base button that users can interact with. 
+    // If not specific user, show 🔴 as default for the broadcast
     const seenBtn = Markup.button.callback(`${isSeen ? "🟢" : "🔴"} TANISHDIM`, `seen_${task.id}`);
     const buttons = [seenBtn];
     if (task.is_exec_required) buttons.push(Markup.button.callback("✅ Bajarildi", `done_${task.id}`));
