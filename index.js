@@ -47,6 +47,8 @@ function loadDb() {
 function saveDb() { fs.writeFileSync('./supervisor_db.json', JSON.stringify(db, null, 2)); }
 loadDb();
 
+let waitingReports = {}; // State: { userId: { taskId, region, topicId } }
+
 const bot = new Telegraf(TOKEN);
 
 const server = http.createServer(async (req, res) => {
@@ -243,8 +245,37 @@ bot.on('callback_query', async (ctx) => {
         task.completed_regions.push({ region, time: new Date() });
         saveDb();
         updateMonitoring(task);
-        ctx.answerCbQuery("Ijro etilganingiz qayd etildi! 🗂");
+        
+        waitingReports[userId] = { taskId: tId, region, topicId: task.topic_id };
+        ctx.replyWithHTML(`📥 <b>${region}</b>, Iltimos topshiriq ижро ҳужжатини (Word, Excel, PDF ёки Rasm) юборинг.`, { reply_to_message_id: ctx.callbackQuery.message.message_id });
+        
+        ctx.answerCbQuery("Ijro etilganingiz qayd etildi! Endi faylni yuboring.");
     }
+});
+
+// LISTEN FOR REPORTS
+bot.on(['document', 'photo', 'video'], async (ctx) => {
+    const userId = ctx.from.id;
+    const report = waitingReports[userId];
+    if (!report) return;
+
+    const region = report.region;
+    const topicId = report.topicId;
+    
+    await ctx.replyWithHTML(`✅ <b>${region}</b> ижро ҳужжати қабул қилинди ва файл топикка йўлланди.`, { reply_to_message_id: ctx.message.message_id });
+    
+    // Forward to the same topic
+    const caption = `📥 <b>${region}</b> ijro holati\n🆔 Topshiriq ID: <code>${report.taskId}</code>`;
+    
+    if (ctx.message.document) {
+        await bot.telegram.sendDocument(GROUP_ID, ctx.message.document.file_id, { message_thread_id: topicId, caption, parse_mode: 'HTML' });
+    } else if (ctx.message.photo) {
+        await bot.telegram.sendPhoto(GROUP_ID, ctx.message.photo[ctx.message.photo.length - 1].file_id, { message_thread_id: topicId, caption, parse_mode: 'HTML' });
+    } else if (ctx.message.video) {
+        await bot.telegram.sendVideo(GROUP_ID, ctx.message.video.file_id, { message_thread_id: topicId, caption, parse_mode: 'HTML' });
+    }
+    
+    delete waitingReports[userId];
 });
 
 // BOT LISTENERS FOR TOPIC SYNC
