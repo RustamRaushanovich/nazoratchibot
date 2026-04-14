@@ -3,6 +3,25 @@
   "id_counter": 1,
   "topics": [
     { "id": 1, "name": "🌍 General" },
-    { "id": 8803, "name": "⚡️ TEZKOR!" }
+    { "id": 8803, "name": "⚡️ TEZKOR!" },
+    { "id": 1001, "name": "Farg‘ona shahri" },
+    { "id": 1002, "name": "Marg‘ilon shahri" },
+    { "id": 1003, "name": "Qo‘qon shahri" },
+    { "id": 1004, "name": "Quvasoy shahri" },
+    { "id": 1005, "name": "Beshariq tumani" },
+    { "id": 1006, "name": "Bag‘dod tumani" },
+    { "id": 1007, "name": "Buvayda tumani" },
+    { "id": 1008, "name": "Dang‘ara tumani" },
+    { "id": 1009, "name": "Yozyovon tumani" },
+    { "id": 1010, "name": "Oltiariq tumani" },
+    { "id": 1011, "name": "Qo‘shtepa tumani" },
+    { "id": 1012, "name": "Farg‘ona tumani" },
+    { "id": 1013, "name": "O‘zbekiston tumani" },
+    { "id": 1014, "name": "Rishton tumani" },
+    { "id": 1015, "name": "So‘x tumani" },
+    { "id": 1016, "name": "Toshloq tumani" },
+    { "id": 1017, "name": "Furqat tumani" },
+    { "id": 1018, "name": "Quva tumani" },
+    { "id": 1019, "name": "Uchko‘prik tumani" }
   ]
 }
