@@ -231,6 +231,8 @@ bot.on('callback_query', async (ctx) => {
         updateMonitoring(task);
         ctx.answerCbQuery("Ижро этилганингиз қайд этилди! 🗂");
     }
+});
+
 // BOT LISTENERS FOR TOPIC SYNC
 bot.on('forum_topic_created', (ctx) => {
     const topic = ctx.message.forum_topic_created;
