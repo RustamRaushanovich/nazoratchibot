@@ -18,37 +18,23 @@ const DISTRICT_ADMINS = { 5807811746: "Dang‘ara tumani", 922449047: "Beshariq 
 
 const HUDUD_KEYWORDS = ["Farg‘ona shahri", "Marg‘ilon shahri", "Beshariq tumani", "Bag‘dod tumani", "Uchko‘prik tumani", "Qo‘shtepa tumani", "Farg‘ona tumani", "O‘zbekiston tumani", "Dang‘ara tumani", "Rishton tumani", "So‘x tumani", "Toshloq tumani", "Oltiariq tumani", "Furqat tumani", "Buvayda tumani", "Quva tumani", "Qo‘qon shahri", "Quvasoy shahri", "Yozyovon tumani"];
 
-const TELEGRAM_TOPICS = [
-    { id: 9001, name: "📜 ПҚ-1 бўйича алоҳида" },
-    { id: 1, name: "🌍 General" },
-    { id: 8785, name: "📄 ПҚ ва ПФ топшириқлари" },
-    { id: 8779, name: "📝 Topshiriqlar uchun alohida" },
-    { id: 35153, name: "👤 Ёшлар куни (пайшанба)" },
-    { id: 8795, name: "✈️ Xorij (ketgan/kelgan)" },
-    { id: 8777, name: "🚫 Гиёҳвандликka қарши" },
-    { id: 34015, name: "🗓 Чора-тадбирлар" },
-    { id: 16708, name: "🎖 ЧҚБТ (Жасорат м.)" },
-    { id: 34752, name: "🎗 Ёшlar kuni (munosabat)" },
-    { id: 8803, name: "⚡️ ТЕЗКОР!" },
-    { id: 36194, name: "♻️ Xorijdan qaytarilganlar" },
-    { id: 13201, name: "🏆 Спорт тадбирлари" },
-    { id: 22873, name: "⏳ Келажак соатлари" },
-    { id: 13081, name: "👩‍💼 Хотин-qizlar va gender" },
-    { id: 8800, name: "⚖️ Жиноятchilik назорати" },
-    { id: 19963, name: "📊 КУНЛИК ДАВОМАТ" },
-    { id: 13787, name: "🌟 Iqtidorli o‘quvchilar" },
-    { id: 13775, name: "📺 OAV yoritilishi" },
-    { id: 13006, name: "🤝 Камбағал оилаларга к." },
-    { id: 20509, name: "📖 Сиёсий-маърифат соати" },
-    { id: 9878, name: "☀️ Ёзги соғломлаштириш" },
-    { id: 10766, name: "🔔 Сўнгги қўнғироқ" },
-    { id: 20758, name: "🌱 Ekologiya" },
-    { id: 8790, name: "📑 15 талик жадвал" },
-    { id: 10778, name: "🎭 ТАНЛОВ ВА ТАДБИРЛАР" }
-];
+const GROUP_ID = -1002262665652;
 
-let db = { tasks: [] }; 
-function loadDb() { if (fs.existsSync('./supervisor_db.json')) { try { db = JSON.parse(fs.readFileSync('./supervisor_db.json')); } catch (e) {} } db.topics = TELEGRAM_TOPICS; }
+let db = { tasks: [], topics: [] }; 
+function loadDb() { 
+    if (fs.existsSync('./supervisor_db.json')) { 
+        try { 
+            db = JSON.parse(fs.readFileSync('./supervisor_db.json')); 
+        } catch (e) {} 
+    } 
+    // Ensure initial topics if db is empty or just started
+    if (!db.topics || db.topics.length === 0) {
+        db.topics = [
+            { id: 1, name: "🌍 General" },
+            { id: 8803, name: "⚡️ ТЕЗКОР!" }
+        ];
+    }
+}
 function saveDb() { fs.writeFileSync('./supervisor_db.json', JSON.stringify(db, null, 2)); }
 loadDb();
 
@@ -81,7 +67,7 @@ const server = http.createServer(async (req, res) => {
             });
         });
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        return res.end(JSON.stringify({ tasks: db.tasks, topics: TELEGRAM_TOPICS, districts: HUDUD_KEYWORDS, stats }));
+        return res.end(JSON.stringify({ tasks: db.tasks, topics: db.topics, districts: HUDUD_KEYWORDS, stats }));
     }
 
     if (req.url.startsWith('/api/edit') && req.method === 'POST') {
@@ -140,7 +126,7 @@ const server = http.createServer(async (req, res) => {
             
             let lastTopicName = "";
             for (const tid of data.topics) {
-                const topic = TELEGRAM_TOPICS.find(tp => tp.id == tid);
+                const topic = db.topics.find(tp => tp.id == tid);
                 lastTopicName = topic ? topic.name : "Noma'lum";
                 const task = { 
                     id: Date.now()+Math.random(), 
@@ -175,7 +161,7 @@ const server = http.createServer(async (req, res) => {
                     const monTxt = `📊 <b>IJRO:</b> ${emojiId}\n\n` + HUDUD_KEYWORDS.map(h => `${h}: 🛑`).join('\n');
                     const mon = await bot.telegram.sendMessage(GROUP_ID, monTxt, { parse_mode: 'HTML', message_thread_id: threadId });
                     task.monitoring_msg_id = mon.message_id;
-                    updateMonitoring(task); // Final polish formatting
+                    updateMonitoring(task);
                 } catch (e) { console.error("BROADCAST ERROR:", e.message); }
             }
             saveDb(); res.writeHead(200, { 'Content-Type': 'application/json' }); 
@@ -245,6 +231,24 @@ bot.on('callback_query', async (ctx) => {
         saveDb();
         updateMonitoring(task);
         ctx.answerCbQuery("Ижро этилганингиз қайд этилди! 🗂");
+    }
+// BOT LISTENERS FOR TOPIC SYNC
+bot.on('forum_topic_created', (ctx) => {
+    const topic = ctx.message.forum_topic_created;
+    const topicId = ctx.message.message_thread_id;
+    if (!db.topics.find(t => t.id === topicId)) {
+        db.topics.push({ id: topicId, name: topic.name });
+        saveDb();
+    }
+});
+
+bot.on('forum_topic_edited', (ctx) => {
+    const topic = ctx.message.forum_topic_edited;
+    const topicId = ctx.message.message_thread_id;
+    const index = db.topics.findIndex(t => t.id === topicId);
+    if (index !== -1 && topic.name) {
+        db.topics[index].name = topic.name;
+        saveDb();
     }
 });
 
