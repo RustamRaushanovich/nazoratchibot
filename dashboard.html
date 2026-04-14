@@ -56,6 +56,46 @@
         .status-badge { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 800; }
         .btn-action { background: transparent; border: 1px solid var(--border); color: white; padding: 5px 10px; border-radius: 6px; cursor: pointer; margin-right: 5px; }
         .btn-delete { color: var(--danger); border-color: var(--danger); }
+
+        /* LUXURIOUS DOWNLOAD BUTTONS */
+        .download-badge {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 10px 22px;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            text-transform: uppercase;
+            font-size: 11px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(15px);
+            color: #fff;
+        }
+        .download-badge:hover {
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: translateY(-4px) scale(1.08);
+            box-shadow: 0 15px 35px rgba(59, 130, 246, 0.5);
+            color: #fff;
+        }
+        .download-badge::after {
+            content: "";
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, transparent, rgba(255,255,255,0.2), transparent);
+            transform: rotate(45deg);
+            transition: 0.6s;
+        }
+        .download-badge:hover::after { left: 100%; }
     </style>
 </head>
 <body>
@@ -65,16 +105,19 @@
 <div class="header">
     <div class="logo">🚀 SUPERVISOR <span>AI</span></div>
     
-    <div style="display:flex; align-items:center; gap:15px; background: rgba(255,255,255,0.05); padding: 5px 15px; border-radius: 12px; border: 1px solid var(--border);">
-        <span style="font-size:11px; color:var(--text-dim); font-weight:700;">GET THE APP:</span>
-        <div class="tab" style="padding:5px 12px; font-size:12px;">💻 DESKTOP</div>
-        <div class="tab" style="padding:5px 12px; font-size:12px;">📱 MOBILE</div>
+    <div style="display:flex; align-items:center; gap:12px;">
+        <div class="download-badge">
+            <span>💻 DESKTOP</span>
+        </div>
+        <div class="download-badge">
+            <span>📱 MOBILE</span>
+        </div>
     </div>
 
     <div class="nav-tabs">
         <div class="tab active" onclick="switchView('submit')">TOPSHIRIQ</div>
         <div class="tab" onclick="switchView('list')">RO'YXAT</div>
-        <div class="tab" id="stats-tab">STATISTIKA</div>
+        <div class="tab" onclick="switchView('stats')">STATISTIKA</div>
     </div>
 </div>
 
@@ -107,7 +150,9 @@
             <div class="card-title">👤 MAS'UL RAHBAR</div>
             <select id="task-leader">
                 <option value="D. Kasimova">D. Kasimova</option>
-                <option value="A. Ahmedov">A. Ahmedov</option>
+                <option value="R. Turdiyev">R. Turdiyev</option>
+                <option value="D. A'zamov">D. A'zamov</option>
+                <option value="A. Azimov">A. Azimov</option>
             </select>
 
             <div class="card-title">📂 BO'LIMLAR / TOPICLAR</div>
@@ -153,29 +198,45 @@
     </table>
 </div>
 
+<!-- STATISTICS VIEW -->
+<div id="stats-view" class="card" style="display:none;">
+    <div class="card-title">📊 IJRO STATISTIKASI (HUDUDLAR KESIMIDA)</div>
+    <table class="task-list-table">
+        <thead>
+            <tr>
+                <th>📍 HUDUD</th>
+                <th>📦 JAMI</th>
+                <th>✅ TANISHISH</th>
+                <th>🚀 O'Z VAQTIDA</th>
+                <th>⏰ KECHIKKAN</th>
+            </tr>
+        </thead>
+        <tbody id="stats-table-body">
+            <!-- Stats load here -->
+        </tbody>
+    </table>
+</div>
+
 <script>
     let currentData = { topics: [] };
 
     function switchView(view) {
         document.getElementById('submit-view').style.display = view === 'submit' ? 'grid' : 'none';
         document.getElementById('task-list-view').style.display = view === 'list' ? 'block' : 'none';
+        document.getElementById('stats-view').style.display = view === 'stats' ? 'block' : 'none';
+        
         document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        const activeTabIdx = view === 'submit' ? 0 : 1;
-        document.querySelectorAll('.tab')[activeTabIdx].classList.add('active');
-        if(view === 'list') renderTasks();
+        if(view === 'submit') document.querySelectorAll('.tab')[0].classList.add('active');
+        if(view === 'list') { document.querySelectorAll('.tab')[1].classList.add('active'); renderTasks(); }
+        if(view === 'stats') { document.querySelectorAll('.tab')[2].classList.add('active'); renderStats(); }
     }
 
     async function init() {
         const res = await fetch('/api/data');
         currentData = await res.json();
-        
-        // Render dynamic topics
         const container = document.getElementById('topics-container');
         container.innerHTML = currentData.topics.map(t => `
-            <div class="grid-item">
-                <span>${t.name}</span>
-                <input type="checkbox" class="topic-checkbox" value="${t.id}">
-            </div>
+            <div class="grid-item"><span>${t.name}</span><input type="checkbox" class="topic-checkbox" value="${t.id}"></div>
         `).join('');
     }
     init();
@@ -190,12 +251,19 @@
                 <td style="max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${t.text}</td>
                 <td>${t.deadline}</td>
                 <td><span class="status-badge" style="background:rgba(16,185,129,0.2); color:var(--success)">YUBORILDI</span></td>
-                <td>
-                    <button class="btn-action">✏️</button>
-                    <button class="btn-action btn-delete" onclick="deleteTask('${t.custom_id}')">🗑</button>
-                </td>
+                <td><button class="btn-action">✏️</button><button class="btn-action btn-delete" onclick="deleteTask('${t.custom_id}')">🗑</button></td>
             </tr>
         `).join('');
+    }
+
+    async function renderStats() {
+        const res = await fetch('/api/data');
+        const data = await res.json();
+        const body = document.getElementById('stats-table-body');
+        body.innerHTML = Object.keys(data.stats).map(h => {
+            const s = data.stats[h];
+            return `<tr><td style="font-weight:bold">${h}</td><td>${s.total}</td><td><span class="status-badge" style="background:rgba(59,130,246,0.1); color:var(--primary)">${s.seen}</span></td><td><span class="status-badge" style="background:rgba(16,185,129,0.1); color:var(--success)">${s.onTime}</span></td><td><span class="status-badge" style="background:rgba(239,68,68,0.1); color:var(--danger)">${s.late}</span></td></tr>`;
+        }).join('');
     }
 
     async function deleteTask(cId) {
@@ -209,19 +277,9 @@
         const date = document.getElementById('task-date').value;
         const time = document.getElementById('task-time').value;
         const condition = document.getElementById('task-condition').value;
-        
         const selectedTopics = Array.from(document.querySelectorAll('.topic-checkbox:checked')).map(cb => cb.value);
         if(selectedTopics.length === 0) return alert("Камида битта бўлимни танланг!");
-
-        const res = await fetch('/api/create', {
-            method: 'POST',
-            body: JSON.stringify({
-                text, date, time, 
-                is_exec_required: condition === 'action',
-                topics: selectedTopics,
-                exec_types: ["📩 Telegram"]
-            })
-        });
+        const res = await fetch('/api/create', { method: 'POST', body: JSON.stringify({ text, date, time, is_exec_required: condition === 'action', topics: selectedTopics, exec_types: ["📩 Telegram"] }) });
         const data = await res.json();
         const toast = document.getElementById('success-toast');
         toast.innerText = `🚀 Раҳмат! Хабарингиз [${data.topic_name}]га муваффақиятли юборилди.`;

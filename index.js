@@ -18,7 +18,6 @@ const DISTRICT_ADMINS = { 5807811746: "Dang‘ara tumani", 922449047: "Beshariq 
 
 const HUDUD_KEYWORDS = ["Farg‘ona shahri", "Marg‘ilon shahri", "Beshariq tumani", "Bag‘dod tumani", "Uchko‘prik tumani", "Qo‘shtepa tumani", "Farg‘ona tumani", "O‘zbekiston tumani", "Dang‘ara tumani", "Rishton tumani", "So‘x tumani", "Toshloq tumani", "Oltiariq tumani", "Furqat tumani", "Buvayda tumani", "Quva tumani", "Qo‘qon shahri", "Quvasoy shahri", "Yozyovon tumani"];
 
-const GROUP_ID = -1002262665652;
 
 let db = { tasks: [], topics: [] }; 
 function loadDb() { 
