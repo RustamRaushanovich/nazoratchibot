@@ -92,15 +92,23 @@ const server = http.createServer(async (req, res) => {
                 task.text = translatedText;
                 task.deadline = `${data.date} ${data.time}:00`;
                 task.is_exec_required = data.is_exec_required;
-                const txt = `✏️ <b>TAHRIRLANDI (ID: ${task.custom_id})</b>\n🛠 Ijro turi: <b>${data.exec_types?.join(', ') || 'Ma\'lum qilinmagan'}</b>\n📢 <b>YANGI TOPSHIRIQ:</b>\n📝 <i>${task.text}</i>\n📅 Muddat: <b>${data.date} ${data.time}</b>\n\n#topshiriq_nazorati`;
-                const threadId = parseInt(task.topic_id) === 1 ? undefined : parseInt(task.topic_id);
                 
+                // APPLY MANUAL OVERRIDES IF PROVIDED
+                if (data.manual_seen) {
+                    task.seen_regions = data.manual_seen.map(r => ({ region: r, time: new Date() }));
+                }
+                if (data.manual_done) {
+                    task.completed_regions = data.manual_done.map(r => ({ region: r, time: new Date() }));
+                }
+
+                const txt = `✏️ <b>TAHRIRLANDI (ID: ${task.custom_id})</b>\n🛠 Ijro turi: <b>${data.exec_types?.join(', ') || 'Ma\'lum qilinmagan'}</b>\n📢 <b>YANGI TOPSHIRIQ:</b>\n📝 <i>${task.text}</i>\n📅 Muddat: <b>${data.date} ${data.time}</b>\n\n#topshiriq_nazorati`;
                 const buttons = [Markup.button.callback("📥 Tanishdim", `seen_${task.id}`)];
                 if (task.is_exec_required) buttons.push(Markup.button.callback("✅ Bajarildi", `done_${task.id}`));
                 const keyboard = Markup.inlineKeyboard([buttons]);
 
                 try {
                     await bot.telegram.editMessageText(GROUP_ID, task.msg_id, null, txt, { parse_mode: 'HTML', ...keyboard });
+                    updateMonitoring(task); // Refresh the monitoring report live!
                 } catch (e) { console.error("EDIT MSG ERROR:", e.message); }
             }
             saveDb(); res.writeHead(200); res.end('OK');

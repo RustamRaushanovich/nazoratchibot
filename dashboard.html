@@ -162,6 +162,15 @@
         <input type="file" id="task-files" multiple>
         
         <button class="btn-submit" onclick="submitTask()">🚀 TOPSHIRIQNI YUBORISH</button>
+
+        <!-- MANUAL EXECUTION OVERRIDE (VISIBLE ONLY IN EDIT MODE) -->
+        <div id="manual-execution-section" style="display:none; margin-top:30px; border-top:1px solid var(--border); padding-top:20px;">
+            <div class="card-title">⚙️ HUDUDLAR IJROSI (MA'LUMOTLARNI TO'G'RILASH)</div>
+            <p style="font-size:12px; color:var(--text-dim); margin-bottom:15px;">Agar tuman lichkangizga yuborgan bo'lsa, bu yerda qo'lda belgilashingiz mumkin:</p>
+            <div class="selection-grid" id="manual-regions-grid" style="grid-template-columns: 1fr;">
+                <!-- Generated dynamically -->
+            </div>
+        </div>
     </div>
 
     <!-- RIGHT PANEL: SETTINGS -->
@@ -320,6 +329,25 @@
         document.getElementById('task-date').value = d;
         document.getElementById('task-time').value = t.substring(0,5);
         
+        // Show manual override
+        const manualSection = document.getElementById('manual-execution-section');
+        const manualGrid = document.getElementById('manual-regions-grid');
+        manualSection.style.display = 'block';
+        
+        manualGrid.innerHTML = HUDUD_KEYWORDS.map(h => {
+            const isSeen = task.seen_regions.some(r => r.region === h);
+            const isDone = task.completed_regions.some(r => r.region === h);
+            return `
+                <div class="grid-item" style="background:rgba(255,255,255,0.02)">
+                    <span style="font-size:13px;">${h}</span>
+                    <div style="display:flex; gap:15px;">
+                        <label style="margin:0; font-size:11px;"><input type="checkbox" class="manual-seen" value="${h}" ${isSeen ? 'checked' : ''}> SEEN</label>
+                        <label style="margin:0; font-size:11px;"><input type="checkbox" class="manual-done" value="${h}" ${isDone ? 'checked' : ''}> DONE</label>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
         switchView('submit');
         const btn = document.querySelector('.btn-submit');
         btn.innerHTML = "💾 O'ZGARTIRISHNI SAQLASH";
@@ -372,7 +400,11 @@
             topics: selectedTopics, 
             exec_types: selectedExecTypes.length > 0 ? selectedExecTypes : ["Ko'rsatilmagan"] 
         };
-        if(editMode) payload.custom_id = editTaskId;
+        if(editMode) {
+            payload.custom_id = editTaskId;
+            payload.manual_seen = Array.from(document.querySelectorAll('.manual-seen:checked')).map(cb => cb.value);
+            payload.manual_done = Array.from(document.querySelectorAll('.manual-done:checked')).map(cb => cb.value);
+        }
 
         const res = await fetch(endpoint, { method: 'POST', body: JSON.stringify(payload) });
         const data = await res.json();
